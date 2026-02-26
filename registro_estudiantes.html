@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro de Clase</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f0f0f; --surface:#181818; --surface2:#222; --border:#2e2e2e;
+  --accent:#ff6b5b; --accent2:#ffaa94; --text:#f5f0ee; --text-muted:#888;
+  --present:#5bffa0; --absent:#ff6b5b; --late:#ffcc6b; --radius:8px;
+  --inclass:#a78bfa; --holiday:#60a5fa; --leave:#f97316; --recess:#94a3b8;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.3;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");}
+
+/* ── COURSE SCREEN ── */
+#courseScreen{position:relative;z-index:1;min-height:100vh;padding:48px;}
+.app-brand{display:flex;align-items:flex-end;gap:16px;margin-bottom:48px;}
+.logo-mark{font-family:'DM Serif Display',serif;font-size:52px;line-height:1;color:var(--accent);letter-spacing:-2px;}
+.brand-text h1{font-family:'DM Serif Display',serif;font-size:24px;font-weight:400;}
+.brand-text p{font-size:11px;color:var(--text-muted);letter-spacing:.15em;text-transform:uppercase;margin-top:2px;}
+.courses-title{font-family:'DM Serif Display',serif;font-size:32px;font-weight:400;margin-bottom:24px;}
+.course-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
+.course-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden;}
+.course-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent);transform:scaleX(0);transition:transform .2s;transform-origin:left;}
+.course-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+.course-card:hover::before{transform:scaleX(1);}
+.course-card-name{font-family:'DM Serif Display',serif;font-size:20px;margin-bottom:2px;}
+.course-card-school{font-size:11px;color:var(--accent2);margin-bottom:2px;}
+.course-card-meta{font-size:11px;color:var(--text-muted);margin-bottom:14px;}
+.course-card-stats{display:flex;gap:18px;}
+.course-stat{font-size:10px;color:var(--text-muted);letter-spacing:.08em;text-transform:uppercase;}
+.course-stat span{display:block;font-family:'DM Serif Display',serif;font-size:22px;color:var(--text);letter-spacing:0;text-transform:none;}
+.course-card-del{position:absolute;top:10px;right:10px;background:none;border:none;color:var(--text-muted);font-size:18px;cursor:pointer;opacity:0;transition:opacity .15s;padding:3px 7px;border-radius:4px;}
+.course-card:hover .course-card-del{opacity:1;}
+.course-card-del:hover{background:var(--absent);color:#0f0f0f;}
+.add-course-card{background:transparent;border:1px dashed var(--border);border-radius:12px;padding:24px;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:130px;color:var(--text-muted);font-size:13px;}
+.add-course-card:hover{border-color:var(--accent);color:var(--accent);}
+.add-course-card .plus{font-size:30px;line-height:1;}
+
+/* ── APP SCREEN ── */
+#appScreen{display:none;}
+#appScreen.open{display:block;}
+header{position:relative;z-index:1;padding:18px 48px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.back-btn{background:none;border:1px solid var(--border);border-radius:var(--radius);color:var(--text-muted);font-family:'DM Mono',monospace;font-size:12px;padding:7px 13px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.back-btn:hover{border-color:var(--accent);color:var(--accent);}
+.header-sep{font-size:18px;color:var(--border);}
+.header-course-name{font-family:'DM Serif Display',serif;font-size:20px;font-weight:400;flex:1;}
+.header-sub{font-size:11px;color:var(--text-muted);}
+.header-edit-btn{background:none;border:none;color:var(--text-muted);font-size:14px;cursor:pointer;padding:0 4px;}
+.header-edit-btn:hover{color:var(--accent);}
+
+.tabs{position:relative;z-index:1;display:flex;gap:2px;padding:0 48px;border-bottom:1px solid var(--border);}
+.tab{padding:13px 18px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;transition:all .2s;margin-bottom:-1px;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+main{position:relative;z-index:1;padding:28px 48px;}
+.panel{display:none;}
+.panel.active{display:block;}
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;}
+.section-title{font-family:'DM Serif Display',serif;font-size:26px;font-weight:400;}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.08em;cursor:pointer;border:1px solid transparent;transition:all .15s;}
+.btn-primary{background:var(--accent);color:#0f0f0f;font-weight:500;}
+.btn-primary:hover{background:#ff8070;}
+.btn-ghost{background:transparent;border-color:var(--border);color:var(--text-muted);}
+.btn-ghost:hover{border-color:var(--text);color:var(--text);}
+.btn-sm{padding:5px 11px;font-size:11px;}
+
+.table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{background:var(--surface);padding:11px 13px;text-align:left;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:9px 13px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--surface2);}
+.student-name{font-family:'DM Serif Display',serif;font-size:15px;}
+
+/* ATTENDANCE CHIPS */
+.att-chip{display:inline-flex;align-items:center;justify-content:center;width:28px;height:24px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;border:none;transition:all .12s;user-select:none;letter-spacing:.02em;}
+.att-chip.P{background:var(--present);color:#0f0f0f;}
+.att-chip.A{background:var(--absent);color:#fff;}
+.att-chip.T{background:var(--late);color:#0f0f0f;}
+.att-chip.AC{background:var(--inclass);color:#fff;}
+.att-chip.F{background:var(--holiday);color:#fff;}
+.att-chip.L{background:var(--leave);color:#fff;}
+.att-chip.R{background:var(--recess);color:#fff;}
+.att-chip.none{background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);}
+
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;letter-spacing:.06em;}
+.badge-green{background:rgba(91,255,160,.12);color:var(--present);border:1px solid rgba(91,255,160,.3);}
+.badge-yellow{background:rgba(255,204,107,.12);color:var(--late);border:1px solid rgba(255,204,107,.3);}
+.badge-red{background:rgba(255,107,91,.12);color:var(--absent);border:1px solid rgba(255,107,91,.3);}
+
+.grade-input{width:54px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:5px 7px;outline:none;text-align:center;transition:border-color .15s;}
+.grade-input:focus{border-color:var(--accent2);}
+
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.stat-card.green::before{background:var(--present);}
+.stat-card.red::before{background:var(--absent);}
+.stat-card.blue::before{background:var(--accent2);}
+.stat-card.yellow::before{background:var(--late);}
+.stat-card.purple::before{background:var(--inclass);}
+.stat-value{font-family:'DM Serif Display',serif;font-size:32px;line-height:1;margin-bottom:4px;}
+.stat-label{font-size:10px;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;}
+.progress-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-top:6px;}
+.progress-fill{height:100%;border-radius:2px;transition:width .4s;}
+
+/* DATE PILLS */
+.date-header{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.date-pill{display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 10px 4px 8px;font-size:11px;}
+.date-pill.is-R{border-color:var(--recess);color:var(--recess);}
+.del-date{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:15px;line-height:1;padding:0 2px;border-radius:50%;}
+.del-date:hover{color:var(--absent);}
+
+/* PARTICIPATION EMOJI */
+.part-btn{background:none;border:none;cursor:pointer;font-size:16px;line-height:1;padding:2px;border-radius:4px;transition:transform .15s;display:block;margin:2px auto 0;}
+.part-btn:hover{transform:scale(1.35);}
+.part-total{font-size:10px;color:var(--accent2);text-align:center;margin-top:1px;font-weight:500;}
+
+/* TASK CARDS */
+.task-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;}
+.task-header{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;}
+.task-name-label{font-family:'DM Serif Display',serif;font-size:17px;}
+.task-type-badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:20px;border:1px solid var(--border);color:var(--text-muted);}
+.task-table{width:100%;}
+.task-table td{padding:8px 18px;border-bottom:1px solid var(--border);}
+.task-table tr:last-child td{border-bottom:none;}
+
+/* MODALS */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(5px);}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:30px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;animation:slideUp .2s ease;}
+@keyframes slideUp{from{transform:translateY(18px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.modal h2{font-family:'DM Serif Display',serif;font-size:22px;font-weight:400;margin-bottom:20px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-grid .full{grid-column:1/-1;}
+.form-group{margin-bottom:0;}
+.form-label{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:5px;}
+.form-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'DM Mono',monospace;font-size:13px;padding:9px 13px;outline:none;transition:border-color .2s;}
+.form-input:focus{border-color:var(--accent);}
+select.form-input{cursor:pointer;}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+.section-divider{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:18px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+
+/* INFO PANEL */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:24px;}
+.info-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
+.info-card-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;}
+.info-card-value{font-family:'DM Serif Display',serif;font-size:17px;}
+.info-card-value.small{font-family:'DM Mono',monospace;font-size:13px;}
+
+/* CLASS COUNTER SECTION */
+.class-counter{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px;}
+.counter-pill{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 18px;text-align:center;}
+.counter-pill .num{font-family:'DM Serif Display',serif;font-size:28px;line-height:1;color:var(--accent);}
+.counter-pill .lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-top:2px;}
+
+/* LEGEND */
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;font-size:11px;color:var(--text-muted);}
+.legend-item{display:flex;align-items:center;gap:5px;}
+
+.fade-in{animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+.empty-state{text-align:center;padding:50px 20px;color:var(--text-muted);}
+.empty-state .icon{font-size:36px;margin-bottom:10px;}
+.empty-state p{font-size:13px;}
+
+/* RECESO row styling */
+tr.receso-row td{background:rgba(148,163,184,.06);color:var(--recess);}
+
+@media(max-width:700px){
+  #courseScreen,header,main,.tabs{padding-left:16px;padding-right:16px;}
+  .stat-grid{grid-template-columns:1fr 1fr;}
+  .form-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════ COURSE SELECTION ══════════ -->
+<div id="courseScreen">
+  <div class="app-brand">
+    <div class="logo-mark">RC</div>
+    <div class="brand-text">
+      <h1>Registro de Clase</h1>
+      <p>Gestión de cursos · 2025</p>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <div class="courses-title" style="margin-bottom:0">Mis Cursos</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span id="saveStatus" style="font-size:11px;color:var(--text-muted);margin-right:4px"></span>
+      <button class="btn btn-ghost btn-sm" onclick="exportBackup()" title="Descarga un archivo .json con todos los datos">&#x1F4BE; Guardar copia</button>
+      <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Carga un archivo .json guardado anteriormente">
+        &#x1F4C2; Cargar copia
+        <input type="file" accept=".json" id="importFile" style="display:none" onchange="importBackup(event)">
+      </label>
+    </div>
+  </div>
+  <div class="course-grid" id="courseGrid"></div>
+</div>
+
+<!-- ══════════ APP (single course) ══════════ -->
+<div id="appScreen">
+  <header>
+    <button class="back-btn" onclick="goBack()">← Cursos</button>
+    <span class="header-sep">/</span>
+    <div style="flex:1;min-width:0">
+      <div class="header-course-name" id="activeCourseTitle"></div>
+      <div class="header-sub" id="activeCourseSubtitle"></div>
+    </div>
+    <button class="header-edit-btn" title="Editar curso" onclick="openEditCourse()">✎ editar</button>
+    <button class="btn btn-primary btn-sm" onclick="exportBackup()" title="Guardar todos los datos en un archivo .json">&#x1F4BE; Guardar</button>
+  </header>
+  <nav class="tabs">
+    <button class="tab active" onclick="showTab('asistencia',this)">Asistencia</button>
+    <button class="tab" onclick="showTab('calificaciones',this)">Calificaciones</button>
+    <button class="tab" onclick="showTab('trabajos',this)">Trabajo en clase</button>
+    <button class="tab" onclick="showTab('info',this)">Info del Curso</button>
+    <button class="tab" onclick="showTab('resumen',this)">Resumen</button>
+  </nav>
+  <main>
+
+    <!-- ASISTENCIA -->
+    <div class="panel active" id="panel-asistencia">
+      <div class="section-header">
+        <div class="section-title">Asistencia</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="openGenerateDates()">🗓 Generar fechas</button>
+          <button class="btn btn-ghost btn-sm" onclick="openAddDate()">+ Fecha manual</button>
+          <button class="btn btn-primary btn-sm" onclick="openAddStudent()">+ Estudiante</button>
+        </div>
+      </div>
+
+      <div class="class-counter" id="classCounter"></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead id="attThead">
+            <tr id="attDateHeaderRow"></tr>
+          </thead>
+          <tbody id="attBody"></tbody>
+        </table>
+      </div>
+
+      <div class="legend" style="margin-top:14px">
+        <div class="legend-item"><span class="att-chip P" style="pointer-events:none">P</span> Presente</div>
+        <div class="legend-item"><span class="att-chip A" style="pointer-events:none">A</span> Ausente</div>
+        <div class="legend-item"><span class="att-chip T" style="pointer-events:none">T</span> Tardanza</div>
+        <div class="legend-item"><span class="att-chip AC" style="pointer-events:none">AC</span> En clase (sin asistir al inicio)</div>
+        <div class="legend-item"><span class="att-chip F" style="pointer-events:none">F</span> Feriado</div>
+        <div class="legend-item"><span class="att-chip L" style="pointer-events:none">L</span> Licencia docente</div>
+        <div class="legend-item"><span class="att-chip R" style="pointer-events:none">R</span> Receso</div>
+        <div class="legend-item">😐 algo (+1) · 😊 bien (+2) · 🌟 excelente (+3) · 😤 disruptivo (−1) · 😴 desatento (−2)</div>
+        <div style="font-size:10px;color:var(--text-muted)">· F, L y R no cuentan en el porcentaje · Click asistencia para cambiar · Click carita para registrar participación</div>
+      </div>
+    </div>
+
+    <!-- CALIFICACIONES -->
+    <div class="panel" id="panel-calificaciones">
+      <div class="section-header">
+        <div class="section-title">Calificaciones</div>
+        <button class="btn btn-primary btn-sm" onclick="openAddExam()">+ Evaluación</button>
+      </div>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:16px">Las notas de Trabajo en clase aparecen automáticamente. Acá podés agregar evaluaciones adicionales (parciales, finales, etc.).</p>
+      <div class="table-wrap">
+        <table>
+          <thead id="gradesThead"><tr id="gradesHeaderRow"></tr></thead>
+          <tbody id="gradeBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TRABAJO EN CLASE -->
+    <div class="panel" id="panel-trabajos">
+      <div class="section-header">
+        <div class="section-title">Trabajo en clase</div>
+        <button class="btn btn-primary btn-sm" onclick="openAddTask()">+ Nuevo ítem</button>
+      </div>
+      <div id="taskContainer"></div>
+    </div>
+
+    <!-- INFO DEL CURSO -->
+    <div class="panel" id="panel-info">
+      <div class="section-header">
+        <div class="section-title">Información del Curso</div>
+        <button class="btn btn-ghost btn-sm" onclick="openEditCourse()">✎ Editar</button>
+      </div>
+      <div class="info-grid" id="infoGrid"></div>
+    </div>
+
+    <!-- RESUMEN -->
+    <div class="panel" id="panel-resumen">
+      <div class="section-header">
+        <div class="section-title">Resumen General</div>
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ Exportar CSV</button>
+      </div>
+      <div class="stat-grid" id="summaryStats"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Estudiante</th><th>% Asist.</th><th>Estado</th>
+            <th>Prom. Notas</th><th>Participación</th><th>Trabajos</th><th>Nota Final ✎</th>
+          </tr></thead>
+          <tbody id="summaryBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══════════ MODALS ══════════ -->
+
+<!-- COURSE MODAL -->
+<div class="modal-overlay" id="modalCourse">
+  <div class="modal">
+    <h2 id="mCourseTtl">Nuevo Curso</h2>
+    <div class="section-divider">Identificación</div>
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-label">Nombre del curso / materia</label>
+        <input class="form-input" id="mCourseName" placeholder="Ej: Matemáticas 3°B"></div>
+      <div class="form-group"><label class="form-label">Escuela / Institución</label>
+        <input class="form-input" id="mCourseSchool" placeholder="Ej: Escuela N°12"></div>
+      <div class="form-group"><label class="form-label">Año / División</label>
+        <input class="form-input" id="mCourseYear" placeholder="Ej: 3°B"></div>
+      <div class="form-group"><label class="form-label">Ciclo lectivo</label>
+        <input class="form-input" id="mCourseCycle" placeholder="Ej: 2025"></div>
+      <div class="form-group"><label class="form-label">Docente</label>
+        <input class="form-input" id="mCourseTeacher" placeholder="Tu nombre"></div>
+    </div>
+    <div class="section-divider">Horario</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Día de la semana</label>
+        <select class="form-input" id="mCourseDay">
+          <option value="">— Sin definir —</option>
+          <option>Lunes</option><option>Martes</option><option>Miércoles</option>
+          <option>Jueves</option><option>Viernes</option><option>Sábado</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Día 2 (opcional)</label>
+        <select class="form-input" id="mCourseDay2">
+          <option value="">— Ninguno —</option>
+          <option>Lunes</option><option>Martes</option><option>Miércoles</option>
+          <option>Jueves</option><option>Viernes</option><option>Sábado</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Horario inicio</label>
+        <input class="form-input" id="mCourseStart" type="time"></div>
+      <div class="form-group"><label class="form-label">Horario fin</label>
+        <input class="form-input" id="mCourseEnd" type="time"></div>
+      <div class="form-group"><label class="form-label">Turno</label>
+        <select class="form-input" id="mCourseTurno">
+          <option value="">—</option><option>Mañana</option><option>Tarde</option><option>Noche</option><option>Vespertino</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Aula / Sala</label>
+        <input class="form-input" id="mCourseRoom" placeholder="Ej: Aula 7"></div>
+    </div>
+    <div class="section-divider">Año lectivo</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Primera clase</label>
+        <input class="form-input" id="mCourseFirstDate" type="date"></div>
+      <div class="form-group"><label class="form-label">Última clase</label>
+        <input class="form-input" id="mCourseLastDate" type="date"></div>
+      <div class="form-group"><label class="form-label">Inicio receso invernal</label>
+        <input class="form-input" id="mCourseRecessStart" type="date"></div>
+      <div class="form-group"><label class="form-label">Fin receso invernal</label>
+        <input class="form-input" id="mCourseRecessEnd" type="date"></div>
+    </div>
+    <div class="section-divider">Notas adicionales</div>
+    <div class="form-group" style="margin-bottom:0">
+      <textarea class="form-input" id="mCourseNotes" rows="2" placeholder="Observaciones, programa, bibliografía…" style="resize:vertical"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalCourse')">Cancelar</button>
+      <button class="btn btn-primary" id="mCourseSaveBtn" onclick="saveCourse()">Crear</button>
+    </div>
+  </div>
+</div>
+
+<!-- GENERATE DATES MODAL -->
+<div class="modal-overlay" id="modalGenDates">
+  <div class="modal" style="width:460px">
+    <h2>Generar Fechas de Clase</h2>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:18px">Se generarán automáticamente todas las fechas del año lectivo según el día de la semana configurado. Las fechas de receso se marcan con R.</p>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Desde</label>
+        <input class="form-input" id="genFrom" type="date"></div>
+      <div class="form-group"><label class="form-label">Hasta</label>
+        <input class="form-input" id="genTo" type="date"></div>
+      <div class="form-group"><label class="form-label">Día(s) de clase</label>
+        <input class="form-input" id="genDayDisplay" readonly style="cursor:default;color:var(--accent2)"></div>
+      <div class="form-group"><label class="form-label">Receso: desde</label>
+        <input class="form-input" id="genRecessFrom" type="date"></div>
+      <div class="form-group"><label class="form-label">Receso: hasta</label>
+        <input class="form-input" id="genRecessTo" type="date"></div>
+    </div>
+    <div id="genPreview" style="margin-top:14px;font-size:11px;color:var(--text-muted)"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalGenDates')">Cancelar</button>
+      <button class="btn btn-ghost" onclick="previewDates()">Vista previa</button>
+      <button class="btn btn-primary" onclick="generateDates()">Generar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT DATE -->
+<div class="modal-overlay" id="modalDate">
+  <div class="modal" style="width:380px">
+    <h2 id="mDateTitle">Agregar Fecha</h2>
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-label">Fecha</label>
+        <input class="form-input" id="mDateVal" type="date"></div>
+      <div class="form-group full"><label class="form-label">Etiqueta (opcional)</label>
+        <input class="form-input" id="mDateLabel" placeholder="Ej: Clase 3 – Primer parcial"></div>
+      <div class="form-group full"><label class="form-label">Tipo</label>
+        <select class="form-input" id="mDateType">
+          <option value="normal">Clase normal</option>
+          <option value="F">Feriado (F)</option>
+          <option value="L">Licencia docente (L)</option>
+          <option value="R">Receso (R)</option>
+        </select></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalDate')">Cancelar</button>
+      <button class="btn btn-primary" id="mDateSaveBtn" onclick="saveDate()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT -->
+<div class="modal-overlay" id="modalStudent">
+  <div class="modal" style="width:380px">
+    <h2>Agregar Estudiante</h2>
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-label">Nombre completo</label>
+        <input class="form-input" id="mStudentName" placeholder="Ej: García, Lucía" onkeydown="if(event.key==='Enter')saveStudent()"></div>
+      <div class="form-group"><label class="form-label">Legajo / DNI</label>
+        <input class="form-input" id="mStudentLeg" placeholder="Ej: 12345"></div>
+      <div class="form-group"><label class="form-label">Email (opcional)</label>
+        <input class="form-input" id="mStudentEmail" type="email" placeholder="alumno@mail.com"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalStudent')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveStudent()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXAM -->
+<div class="modal-overlay" id="modalExam">
+  <div class="modal" style="width:400px">
+    <h2 id="mExamTitle">Agregar Evaluación</h2>
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-label">Nombre</label>
+        <input class="form-input" id="mExamName" placeholder="Ej: Parcial 1"></div>
+      <div class="form-group"><label class="form-label">Nota máxima</label>
+        <input class="form-input" id="mExamMax" type="number" value="10" min="1"></div>
+      <div class="form-group"><label class="form-label">Peso (ponderado)</label>
+        <input class="form-input" id="mExamWeight" type="number" value="1" min="0.1" step="0.1"></div>
+      <div class="form-group full"><label class="form-label">Tipo de calificación</label>
+        <select class="form-input" id="mExamGradeType">
+          <option value="numeric">Numérica (0–10)</option>
+          <option value="concept">Concepto (MB / B / R / I)</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Fecha</label>
+        <input class="form-input" id="mExamDate" type="date"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalExam')">Cancelar</button>
+      <button class="btn btn-primary" id="mExamSaveBtn" onclick="saveExam()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TASK -->
+<div class="modal-overlay" id="modalTask">
+  <div class="modal" style="width:440px">
+    <h2 id="mTaskTitle">Nuevo ítem</h2>
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-label">Nombre / Título</label>
+        <input class="form-input" id="mTaskName" placeholder="Ej: TP 2 – La célula"></div>
+      <div class="form-group"><label class="form-label">Categoría</label>
+        <select class="form-input" id="mTaskType">
+          <option>Trabajo práctico</option>
+          <option>Informe</option>
+          <option>Exposición</option>
+          <option>Proyecto</option>
+          <option>Tarea</option>
+          <option>Examen / Parcial</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Tipo de calificación</label>
+        <select class="form-input" id="mTaskGradeType">
+          <option value="numeric">Numérica (0–10)</option>
+          <option value="concept">Concepto (MB / B / R / I)</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Fecha en que se pidió</label>
+        <input class="form-input" id="mTaskAskedDate" type="date"></div>
+      <div class="form-group"><label class="form-label">Fecha de entrega</label>
+        <input class="form-input" id="mTaskDate" type="date"></div>
+      <div class="form-group full"><label class="form-label">Nota máxima (solo numérica)</label>
+        <input class="form-input" id="mTaskMax" type="number" value="10" min="1"></div>
+      <div class="form-group full"><label class="form-label">Peso en calificaciones (ponderado)</label>
+        <input class="form-input" id="mTaskWeight" type="number" value="1" min="0.1" step="0.1"></div>
+      <div class="form-group full"><label class="form-label">Descripción / consigna (opcional)</label>
+        <textarea class="form-input" id="mTaskDesc" rows="2" style="resize:vertical" placeholder="Ej: Investigar sobre…"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalTask')">Cancelar</button>
+      <button class="btn btn-primary" id="mTaskSaveBtn" onclick="saveTask()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let courses = [], activeCourseId = null, renamingId = null, nextId = 1;
+const uid = () => nextId++;
+const getC = () => courses.find(c => c.id === activeCourseId);
+
+const DAY_MAP = { 'Lunes':1,'Martes':2,'Miércoles':3,'Jueves':4,'Viernes':5,'Sábado':6 };
+
+// ═══════════════════════════════════════
+// PERSIST
+// ═══════════════════════════════════════
+function save() { try { localStorage.setItem('rc3', JSON.stringify({courses, nextId})); } catch(e){} }
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem('rc3'));
+    if (d) { courses = d.courses||[]; nextId = d.nextId||1; }
+  } catch(e){}
+}
+
+// ═══════════════════════════════════════
+// COURSE SCREEN
+// ═══════════════════════════════════════
+function renderCourseGrid() {
+  const grid = document.getElementById('courseGrid');
+  grid.innerHTML = courses.map(c => `
+    <div class="course-card fade-in" onclick="openCourse(${c.id})">
+      <button class="course-card-del" onclick="event.stopPropagation();deleteCourse(${c.id})">×</button>
+      <div class="course-card-name">${c.name}</div>
+      ${c.school ? `<div class="course-card-school">🏫 ${c.school}</div>` : ''}
+      <div class="course-card-meta">${[c.year, c.cycle, c.turno ? 'Turno '+c.turno : '', c.day].filter(Boolean).join(' · ') || '—'}</div>
+      <div class="course-card-stats">
+        <div class="course-stat"><span>${c.students.length}</span>Alumnos</div>
+        <div class="course-stat"><span>${c.dates.filter(d=>d.type==='normal').length}</span>Clases</div>
+      </div>
+    </div>`).join('') +
+    `<div class="add-course-card" onclick="openAddCourse()"><div class="plus">+</div><div>Nuevo curso</div></div>`;
+}
+
+function openCourse(id) {
+  activeCourseId = id;
+  updateHeader();
+  document.getElementById('courseScreen').style.display = 'none';
+  document.getElementById('appScreen').classList.add('open');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.tab').classList.add('active');
+  document.getElementById('panel-asistencia').classList.add('active');
+  renderAttendance();
+}
+
+function updateHeader() {
+  const c = getC();
+  document.getElementById('activeCourseTitle').textContent = c.name;
+  const parts = [c.school, c.year, c.day && c.day2 ? c.day+' y '+c.day2 : c.day, c.startTime && c.endTime ? c.startTime+' – '+c.endTime : c.startTime, c.turno ? 'Turno '+c.turno : '', c.room].filter(Boolean);
+  document.getElementById('activeCourseSubtitle').textContent = parts.join(' · ');
+}
+
+function goBack() { save(); activeCourseId=null; document.getElementById('appScreen').classList.remove('open'); document.getElementById('courseScreen').style.display='block'; renderCourseGrid(); }
+
+function openAddCourse() {
+  renamingId = null;
+  document.getElementById('mCourseTtl').textContent = 'Nuevo Curso';
+  document.getElementById('mCourseSaveBtn').textContent = 'Crear';
+  ['mCourseName','mCourseSchool','mCourseYear','mCourseCycle','mCourseTeacher','mCourseRoom','mCourseNotes'].forEach(id => document.getElementById(id).value='');
+  ['mCourseDay','mCourseDay2','mCourseTurno'].forEach(id => document.getElementById(id).value='');
+  ['mCourseStart','mCourseEnd','mCourseFirstDate','mCourseLastDate','mCourseRecessStart','mCourseRecessEnd'].forEach(id => document.getElementById(id).value='');
+  openModal('modalCourse');
+  setTimeout(()=>document.getElementById('mCourseName').focus(),80);
+}
+
+function openEditCourse() {
+  const c = getC();
+  renamingId = c.id;
+  document.getElementById('mCourseTtl').textContent = 'Editar Curso';
+  document.getElementById('mCourseSaveBtn').textContent = 'Guardar';
+  document.getElementById('mCourseName').value = c.name||'';
+  document.getElementById('mCourseSchool').value = c.school||'';
+  document.getElementById('mCourseYear').value = c.year||'';
+  document.getElementById('mCourseCycle').value = c.cycle||'';
+  document.getElementById('mCourseTeacher').value = c.teacher||'';
+  document.getElementById('mCourseRoom').value = c.room||'';
+  document.getElementById('mCourseNotes').value = c.notes||'';
+  document.getElementById('mCourseDay').value = c.day||'';
+  document.getElementById('mCourseDay2').value = c.day2||'';
+  document.getElementById('mCourseTurno').value = c.turno||'';
+  document.getElementById('mCourseStart').value = c.startTime||'';
+  document.getElementById('mCourseEnd').value = c.endTime||'';
+  document.getElementById('mCourseFirstDate').value = c.firstDate||'';
+  document.getElementById('mCourseLastDate').value = c.lastDate||'';
+  document.getElementById('mCourseRecessStart').value = c.recessStart||'';
+  document.getElementById('mCourseRecessEnd').value = c.recessEnd||'';
+  openModal('modalCourse');
+}
+
+function saveCourse() {
+  const name = document.getElementById('mCourseName').value.trim();
+  if (!name) return;
+  const data = {
+    name, school: v('mCourseSchool'), year: v('mCourseYear'), cycle: v('mCourseCycle'),
+    teacher: v('mCourseTeacher'), room: v('mCourseRoom'), notes: v('mCourseNotes'),
+    day: v('mCourseDay'), day2: v('mCourseDay2'), turno: v('mCourseTurno'),
+    startTime: v('mCourseStart'), endTime: v('mCourseEnd'),
+    firstDate: v('mCourseFirstDate'), lastDate: v('mCourseLastDate'),
+    recessStart: v('mCourseRecessStart'), recessEnd: v('mCourseRecessEnd')
+  };
+  if (renamingId !== null) {
+    const c = courses.find(x=>x.id===renamingId);
+    Object.assign(c, data);
+    renamingId = null;
+    if (activeCourseId) { updateHeader(); renderInfo(); }
+  } else {
+    courses.push({ id:uid(), ...data, students:[], dates:[], attendance:{}, exams:[], grades:{}, tasks:[], taskDelivery:{}, finalGrades:{} });
+  }
+  closeModal('modalCourse'); save(); renderCourseGrid();
+}
+
+function deleteCourse(id) { if(!confirm('¿Eliminar este curso y todos sus datos?'))return; courses=courses.filter(c=>c.id!==id); save(); renderCourseGrid(); }
+const v = id => document.getElementById(id).value.trim();
+
+// ═══════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════
+function showTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+  if(name==='asistencia') renderAttendance();
+  if(name==='calificaciones') { renderGrades(); }
+  if(name==='trabajos') renderTasks();
+  if(name==='info') renderInfo();
+  if(name==='resumen') renderSummary();
+}
+
+// ═══════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════
+const openModal = id => document.getElementById(id).classList.add('open');
+const closeModal = id => document.getElementById(id).classList.remove('open');
+document.querySelectorAll('.modal-overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');}));
+
+// ═══════════════════════════════════════
+// STUDENTS
+// ═══════════════════════════════════════
+function openAddStudent() { ['mStudentName','mStudentLeg','mStudentEmail'].forEach(id=>document.getElementById(id).value=''); openModal('modalStudent'); setTimeout(()=>document.getElementById('mStudentName').focus(),80); }
+function saveStudent() {
+  const name = document.getElementById('mStudentName').value.trim();
+  if(!name) return;
+  getC().students.push({ id:uid(), name, legajo:v('mStudentLeg'), email:v('mStudentEmail'), participation:{} });
+  closeModal('modalStudent'); save(); renderAttendance();
+}
+
+// ═══════════════════════════════════════
+// DATES – MANUAL
+// ═══════════════════════════════════════
+let editingDateId = null;
+
+function openAddDate() {
+  editingDateId = null;
+  document.getElementById('mDateTitle').textContent = 'Agregar Fecha';
+  document.getElementById('mDateSaveBtn').textContent = 'Agregar';
+  document.getElementById('mDateVal').valueAsDate = new Date();
+  document.getElementById('mDateLabel').value = '';
+  document.getElementById('mDateType').value = 'normal';
+  openModal('modalDate');
+}
+
+function openEditDate(id) {
+  const d = getC().dates.find(x => x.id === id);
+  if (!d) return;
+  editingDateId = id;
+  document.getElementById('mDateTitle').textContent = 'Editar Fecha';
+  document.getElementById('mDateSaveBtn').textContent = 'Guardar';
+  document.getElementById('mDateVal').value = d.date;
+  document.getElementById('mDateLabel').value = d.label || '';
+  document.getElementById('mDateType').value = d.type || 'normal';
+  openModal('modalDate');
+}
+
+function saveDate() {
+  const val = v('mDateVal'); if (!val) return;
+  const type = document.getElementById('mDateType').value;
+  const label = v('mDateLabel');
+  if (editingDateId !== null) {
+    const d = getC().dates.find(x => x.id === editingDateId);
+    if (d) { d.date = val; d.label = label; d.type = type; }
+    editingDateId = null;
+  } else {
+    getC().dates.push({ id: uid(), date: val, label, type });
+  }
+  getC().dates.sort((a,b) => a.date.localeCompare(b.date));
+  closeModal('modalDate'); save(); renderAttendance();
+}
+
+function deleteDate(id) { getC().dates=getC().dates.filter(d=>d.id!==id); save(); renderAttendance(); }
+
+// ═══════════════════════════════════════
+// DATES – GENERATE
+// ═══════════════════════════════════════
+function openGenerateDates() {
+  const c = getC();
+  document.getElementById('genFrom').value = c.firstDate||'';
+  document.getElementById('genTo').value = c.lastDate||'';
+  document.getElementById('genRecessFrom').value = c.recessStart||'';
+  document.getElementById('genRecessTo').value = c.recessEnd||'';
+  const days = [c.day, c.day2].filter(Boolean).join(' y ');
+  document.getElementById('genDayDisplay').value = days || '(configurá el día en Info del Curso)';
+  document.getElementById('genPreview').textContent = '';
+  openModal('modalGenDates');
+}
+
+function computeDates(preview) {
+  const c = getC();
+  const from = document.getElementById('genFrom').value;
+  const to   = document.getElementById('genTo').value;
+  const rFrom= document.getElementById('genRecessFrom').value;
+  const rTo  = document.getElementById('genRecessTo').value;
+  if (!from || !to) { alert('Completá las fechas de inicio y fin.'); return null; }
+
+  const days = [c.day, c.day2].map(d=>DAY_MAP[d]).filter(Boolean);
+  if (!days.length) { alert('Configurá el día de la semana en "Info del Curso" primero.'); return null; }
+
+  const result = [];
+  let cur = new Date(from+'T12:00:00');
+  const end = new Date(to+'T12:00:00');
+  const rS = rFrom ? new Date(rFrom+'T00:00:00') : null;
+  const rE = rTo   ? new Date(rTo+'T23:59:59')   : null;
+
+  while (cur <= end) {
+    if (days.includes(cur.getDay())) {
+      const dateStr = cur.toISOString().split('T')[0];
+      const inRecess = rS && rE && cur >= rS && cur <= rE;
+      result.push({ id: preview ? 0 : uid(), date: dateStr, label:'', type: inRecess ? 'R' : 'normal' });
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  return result;
+}
+
+function previewDates() {
+  const dates = computeDates(true); if(!dates) return;
+  const normal = dates.filter(d=>d.type==='normal').length;
+  const recess = dates.filter(d=>d.type==='R').length;
+  document.getElementById('genPreview').innerHTML =
+    `<span style="color:var(--accent)">✓ ${dates.length} fechas en total</span> · ${normal} clases · ${recess} en receso`;
+}
+
+function generateDates() {
+  const dates = computeDates(false); if(!dates) return;
+  const c = getC();
+  // remove existing generated dates, keep manual ones? ask user
+  if (c.dates.length > 0) {
+    if (!confirm(`Ya hay ${c.dates.length} fechas. ¿Reemplazar todas o agregar las nuevas (sin duplicar)?`)) { closeModal('modalGenDates'); return; }
+    // merge without duplicating
+    const existing = new Set(c.dates.map(d=>d.date));
+    const toAdd = dates.filter(d=>!existing.has(d.date));
+    c.dates.push(...toAdd);
+  } else {
+    c.dates.push(...dates);
+  }
+  c.dates.sort((a,b)=>a.date.localeCompare(b.date));
+  closeModal('modalGenDates'); save(); renderAttendance();
+}
+
+// ═══════════════════════════════════════
+// ATTENDANCE
+// ═══════════════════════════════════════
+// Cycle: none → P → A → T → AC → F → L → R → none
+const ATT_CYCLE = ['none','P','A','T','AC','F','L','R'];
+// States that DO count in attendance denominator
+const ATT_COUNTS = new Set(['P','A','T','AC']); // F, L, R don't count
+// States that count as "present/attended"
+const ATT_PRESENT_WEIGHT = { P:1, T:0.5, AC:0.75, A:0, F:0, L:0, R:0, none:0 };
+
+function cycleAtt(sid, did) {
+  const c=getC(), key=`${sid}_${did}`;
+  const cur = c.attendance[key]||'none';
+  const next = ATT_CYCLE[(ATT_CYCLE.indexOf(cur)+1)%ATT_CYCLE.length];
+  if(next==='none') delete c.attendance[key]; else c.attendance[key]=next;
+  save(); renderAttendance();
+}
+
+function attStats(s) {
+  const c = getC();
+  if(!c.dates.length) return {pct:null,P:0,A:0,T:0,AC:0,F:0,L:0,R:0,total:0,countable:0};
+  let P=0,A=0,T=0,AC=0,F=0,L=0,R=0;
+  c.dates.forEach(d=>{
+    const v=c.attendance[`${s.id}_${d.id}`]||'none';
+    if(v==='P')P++; else if(v==='A')A++; else if(v==='T')T++;
+    else if(v==='AC')AC++; else if(v==='F')F++; else if(v==='L')L++; else if(v==='R')R++;
+  });
+  const countable = P+A+T+AC; // F, L, R excluded from denominator
+  const attended = P*1 + T*0.5; // AC no suma — presente en clase pero no cuenta como asistencia
+  const pct = countable>0 ? Math.round((attended/countable)*100) : null;
+  return {pct, P, A, T, AC, F, L, R, total:c.dates.length, countable};
+}
+
+// participation: per-class emojis. Value: 0=none, 1=😐, 2=😊, 3=🌟
+// 0=none, 1=😐(+1), 2=😊(+2), 3=🌟(+3), 4=😤(-1), 5=😴(-2)
+const PART_EMOJI  = ['', '😐', '😊', '🌟', '😤', '😴'];
+const PART_SCORE  = [  0,   1,   2,   3,  -1,  -2];
+const PART_CYCLE  = [0, 1, 2, 3, 4, 5]; // click cycles through all
+
+function cycleParticipation(sid, did) {
+  const s = getC().students.find(s=>s.id===sid);
+  if (!s.participation || typeof s.participation !== 'object') s.participation = {};
+  const cur = s.participation[did] || 0;
+  const next = (cur + 1) % 6;
+  if (next === 0) delete s.participation[did];
+  else s.participation[did] = next;
+  save(); renderAttendance();
+}
+
+function totalParticipation(s) {
+  if (!s.participation || typeof s.participation !== 'object') return 0;
+  return Object.values(s.participation).reduce((acc, v) => acc + PART_SCORE[v||0], 0);
+}
+
+// Class counters: before recess, after recess, total
+function classCounters() {
+  const c = getC();
+  // Solo cuentan las clases realmente dadas (ni F, ni L, ni R)
+  const givenDates  = c.dates.filter(d => d.type === 'normal');
+  const recessDates = c.dates.filter(d => d.type === 'R');
+  const fDates      = c.dates.filter(d => d.type === 'F');
+  const lDates      = c.dates.filter(d => d.type === 'L');
+  if (!recessDates.length) return { before: givenDates.length, after: 0, total: givenDates.length, recess: recessDates.length, feriados: fDates.length, licencias: lDates.length };
+  const rMin   = recessDates.map(d => d.date).sort()[0];
+  const before = givenDates.filter(d => d.date < rMin).length;
+  const after  = givenDates.filter(d => d.date > rMin).length;
+  return { before, after, total: givenDates.length, recess: recessDates.length, feriados: fDates.length, licencias: lDates.length };
+}
+
+function renderAttendance() {
+  const c = getC();
+
+  // class counters
+  const cc = classCounters();
+  document.getElementById('classCounter').innerHTML = `
+    <div class="counter-pill"><div class="num">${cc.total}</div><div class="lbl">Clases dadas</div></div>
+    <div class="counter-pill"><div class="num" style="color:var(--accent2)">${cc.before}</div><div class="lbl">Antes del receso</div></div>
+    <div class="counter-pill"><div class="num" style="color:var(--inclass)">${cc.after}</div><div class="lbl">Después del receso</div></div>
+    ${cc.recess>0?`<div class="counter-pill"><div class="num" style="color:var(--recess)">${cc.recess}</div><div class="lbl">Días de receso</div></div>`:''}
+    ${cc.feriados>0?`<div class="counter-pill"><div class="num" style="color:var(--holiday)">${cc.feriados}</div><div class="lbl">Feriados</div></div>`:''}
+    ${cc.licencias>0?`<div class="counter-pill"><div class="num" style="color:var(--leave)">${cc.licencias}</div><div class="lbl">Licencias</div></div>`:''}
+  `;
+
+  if (!c.dates.length) {
+    document.getElementById('attDateHeaders').innerHTML = '';
+    document.getElementById('attPartHeaders').innerHTML = '';
+    document.getElementById('attPartHeaderRow').style.display = 'none';
+    document.getElementById('attBody').innerHTML =
+      `<tr><td colspan="4"><div class="empty-state"><div class="icon">📅</div><p>Usá "Generar fechas" para crear el calendario automático →</p></div></td></tr>`;
+    return;
+  }
+
+  // Build header row: fixed cols + one <th> per date
+  const headerRow = document.getElementById('attDateHeaderRow');
+  const dateCols = c.dates.map(d => {
+    const col = d.type==='F'?'var(--holiday)':d.type==='L'?'var(--leave)':d.type==='R'?'var(--recess)':'var(--text-muted)';
+    const icon = d.type==='R'?'⛄':d.type==='F'?'🎌':d.type==='L'?'🏥':'';
+    const [y,m,d2] = d.date.split('-'); const shortDate = `${d2}/${m}`;
+    const labelLine = d.label ? `<div style="font-size:9px;color:var(--text-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52px">${d.label}</div>` : '';
+    return `<th style="min-width:54px;text-align:center;color:${col};vertical-align:bottom;padding:8px 3px 4px">
+      ${icon ? `<div style="font-size:11px">${icon}</div>` : ''}
+      <div style="font-size:11px;font-weight:500;white-space:nowrap">${shortDate}</div>
+      ${labelLine}
+      <div style="display:flex;justify-content:center;gap:4px;margin-top:3px">
+        <button class="del-date" onclick="openEditDate(${d.id})" style="font-size:11px;color:var(--accent2)" title="Editar">✎</button>
+        <button class="del-date" onclick="deleteDate(${d.id})" style="font-size:12px" title="Eliminar">×</button>
+      </div>
+    </th>`;
+  }).join('');
+  headerRow.innerHTML =
+    `<th style="min-width:200px;position:sticky;left:0;background:var(--surface);z-index:2">Estudiante</th>` +
+    dateCols +
+    `<th style="white-space:nowrap">% Asist.</th><th>Detalle</th>`;
+
+  const tbody = document.getElementById('attBody');
+  if (!c.students.length) {
+    tbody.innerHTML = `<tr><td colspan="99"><div class="empty-state"><div class="icon">👥</div><p>Agregá estudiantes para comenzar.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = c.students.map(s => {
+    const attCells = c.dates.map(d => {
+      const val = c.attendance[`${s.id}_${d.id}`] || 'none';
+      const display = val==='none' && (d.type==='F'||d.type==='L'||d.type==='R') ? d.type : val;
+      const chipClass = display==='none' ? 'none' : display;
+      const partVal = (s.participation && typeof s.participation==='object') ? (s.participation[d.id]||0) : 0;
+      const partEmoji = PART_EMOJI[partVal];
+      const score = PART_SCORE[partVal];
+      const scoreColor = score > 0 ? 'var(--present)' : score < 0 ? 'var(--absent)' : 'var(--text-muted)';
+      const isNormal = d.type === 'normal';
+      return `<td style="text-align:center;padding:5px 3px;vertical-align:middle">
+        <button class="att-chip ${chipClass}" onclick="cycleAtt(${s.id},${d.id})">${display==='none'?'–':display}</button>
+        ${isNormal
+          ? `<button class="part-btn" onclick="cycleParticipation(${s.id},${d.id})" title="Click para cambiar participación" style="color:${partVal>0?'inherit':'var(--border)'}">${partEmoji||'·'}</button>`
+          : '<div style="height:22px"></div>'}
+      </td>`;
+    }).join('');
+
+    const st = attStats(s);
+    const pctStr = st.countable > 0 ? st.pct+'%' : '—';
+    const col = st.pct===null ? 'var(--text-muted)' : st.pct>=75 ? 'var(--present)' : st.pct>=50 ? 'var(--late)' : 'var(--absent)';
+    const totalPart = totalParticipation(s);
+    const partColor = totalPart > 0 ? 'var(--present)' : totalPart < 0 ? 'var(--absent)' : 'var(--text-muted)';
+    const partSign = totalPart > 0 ? '+' : '';
+    return `<tr class="fade-in">
+      <td style="position:sticky;left:0;background:var(--surface);z-index:1">
+        <div class="student-name">${s.name}</div>
+        ${s.legajo ? `<div style="font-size:10px;color:var(--text-muted)">${s.legajo}</div>` : ''}
+        ${totalPart !== 0 ? `<div class="part-total" style="color:${partColor}">${partSign}${totalPart} pts</div>` : ''}
+      </td>
+      ${attCells}
+      <td style="color:${col};font-weight:600;white-space:nowrap">${pctStr}</td>
+      <td style="font-size:10px;color:var(--text-muted);white-space:nowrap">${st.countable>0?`${st.P}P ${st.A}A ${st.T}T ${st.AC}AC`:'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// EXAMS / GRADES
+// ═══════════════════════════════════════
+const CONCEPT_VALS = { 'MB':10, 'B':7.5, 'R':5, 'I':2 };
+const CONCEPT_OPTS = ['MB','B','R','I'];
+
+let editingExamId = null;
+
+function openAddExam() {
+  editingExamId = null;
+  document.getElementById('mExamTitle').textContent = 'Agregar Evaluación';
+  document.getElementById('mExamSaveBtn').textContent = 'Agregar';
+  document.getElementById('mExamName').value = '';
+  document.getElementById('mExamMax').value = 10;
+  document.getElementById('mExamWeight').value = 1;
+  document.getElementById('mExamGradeType').value = 'numeric';
+  document.getElementById('mExamDate').value = '';
+  openModal('modalExam');
+  setTimeout(()=>document.getElementById('mExamName').focus(), 80);
+}
+
+function openEditExam(id) {
+  const e = getC().exams.find(x=>x.id===id);
+  if (!e) return;
+  editingExamId = id;
+  document.getElementById('mExamTitle').textContent = 'Editar Evaluación';
+  document.getElementById('mExamSaveBtn').textContent = 'Guardar';
+  document.getElementById('mExamName').value = e.name;
+  document.getElementById('mExamMax').value = e.max;
+  document.getElementById('mExamWeight').value = e.weight;
+  document.getElementById('mExamGradeType').value = e.gradeType||'numeric';
+  document.getElementById('mExamDate').value = e.date||'';
+  openModal('modalExam');
+}
+
+function saveExam() {
+  const name = document.getElementById('mExamName').value.trim(); if(!name) return;
+  const data = {
+    name,
+    max: parseFloat(document.getElementById('mExamMax').value)||10,
+    weight: parseFloat(document.getElementById('mExamWeight').value)||1,
+    gradeType: document.getElementById('mExamGradeType').value,
+    date: document.getElementById('mExamDate').value,
+    source: 'exam'
+  };
+  if (editingExamId !== null) {
+    Object.assign(getC().exams.find(x=>x.id===editingExamId), data);
+    editingExamId = null;
+  } else {
+    getC().exams.push({ id: uid(), ...data });
+  }
+  closeModal('modalExam'); save(); renderGrades();
+}
+
+function deleteExam(id) {
+  getC().exams = getC().exams.filter(e=>e.id!==id);
+  save(); renderGrades();
+}
+
+// Build combined columns: tasks (with grade) + exams
+function allGradeCols() {
+  const c = getC();
+  const taskCols = (c.tasks||[])
+    .filter(t => t.gradeType)
+    .map(t => ({ id: t.id, name: t.name, type: t.type, max: t.max||10, weight: t.weight||1, gradeType: t.gradeType, source: 'task', date: t.date }));
+  const examCols = (c.exams||[]).map(e => ({ ...e, source: 'exam' }));
+  return [...taskCols, ...examCols].sort((a,b) => (a.date||'').localeCompare(b.date||''));
+}
+
+function gradeVal(c, sid, col) {
+  const key = col.source==='task'
+    ? `task_${sid}_${col.id}`
+    : `${sid}_${col.id}`;
+  return c.grades[key] !== undefined ? c.grades[key] : '';
+}
+
+function setGradeVal(sid, col, val) {
+  const c = getC();
+  const key = col.source==='task'
+    ? `task_${sid}_${col.id}`
+    : `${sid}_${col.id}`;
+  c.grades[key] = val;
+}
+
+// Weighted average across all columns (tasks + exams)
+function weightedAvg(s) {
+  const c = getC();
+  const cols = allGradeCols();
+  if (!cols.length) return null;
+  let tw=0, ts=0, any=false;
+  cols.forEach(col => {
+    const raw = gradeVal(c, s.id, col);
+    if (raw === '' || raw === undefined) return;
+    let numeric;
+    if (col.gradeType === 'concept') {
+      numeric = CONCEPT_VALS[raw] ?? null;
+    } else {
+      numeric = parseFloat(raw);
+    }
+    if (numeric === null || isNaN(numeric)) return;
+    any = true;
+    ts += (numeric / col.max) * 10 * col.weight;
+    tw += col.weight;
+  });
+  return (any && tw) ? (ts/tw).toFixed(1) : null;
+}
+
+function renderGrades() {
+  const c = getC();
+  const cols = allGradeCols();
+  const headerRow = document.getElementById('gradesHeaderRow');
+  const tbody = document.getElementById('gradeBody');
+
+  if (!c.students.length) {
+    headerRow.innerHTML = '<th>Estudiante</th><th>Promedio</th>';
+    tbody.innerHTML = `<tr><td colspan="99"><div class="empty-state"><div class="icon">📝</div><p>Primero agregá estudiantes.</p></div></td></tr>`;
+    return;
+  }
+
+  // Build header: sticky student col + one th per grade col + avg
+  const colHeaders = cols.map(col => {
+    const [yy,mm,dd] = (col.date||'').split('-');
+    const dateStr = col.date ? `${dd}/${mm}` : '';
+    const srcColor = col.source==='task' ? 'var(--accent2)' : 'var(--inclass)';
+    const srcLabel = col.source==='task' ? col.type : 'Evaluación';
+    const editFn = col.source==='exam'
+      ? `openEditExam(${col.id})`
+      : `openEditTask(${col.id})`;
+    const delFn = col.source==='exam'
+      ? `deleteExam(${col.id})`
+      : `deleteTask(${col.id})`;
+    return `<th style="min-width:80px;text-align:center;vertical-align:bottom;padding:8px 4px 4px">
+      <div style="font-size:9px;color:${srcColor};text-transform:uppercase;letter-spacing:.08em">${srcLabel}</div>
+      <div style="font-size:11px;font-weight:500;max-width:76px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${col.name}">${col.name}</div>
+      <div style="font-size:9px;color:var(--text-muted)">${col.gradeType==='concept'?'MB/B/R/I':`máx ${col.max}`}${dateStr?' · '+dateStr:''} · ×${col.weight}</div>
+      <div style="display:flex;justify-content:center;gap:4px;margin-top:3px">
+        <button class="del-date" onclick="${editFn}" style="font-size:11px;color:var(--accent2)" title="Editar">✎</button>
+        <button class="del-date" onclick="${delFn}" style="font-size:12px" title="Eliminar">×</button>
+      </div>
+    </th>`;
+  }).join('');
+
+  headerRow.innerHTML =
+    `<th style="min-width:200px;position:sticky;left:0;background:var(--surface);z-index:2">Estudiante</th>` +
+    colHeaders +
+    `<th style="white-space:nowrap;text-align:center">Promedio</th>`;
+
+  // Build rows
+  tbody.innerHTML = c.students.map(s => {
+    const cells = cols.map(col => {
+      const raw = gradeVal(c, s.id, col);
+      if (col.gradeType === 'concept') {
+        const opts = CONCEPT_OPTS.map(o =>
+          `<option value="${o}" ${raw===o?'selected':''}>${o}</option>`
+        ).join('');
+        return `<td style="text-align:center;padding:5px 3px">
+          <select class="grade-input" style="width:64px;padding:4px 4px"
+            onchange="setGradeVal(${s.id},allGradeCols().find(c=>c.source==='${col.source}'&&c.id===${col.id}),this.value);save();renderGrades()">
+            <option value="">—</option>${opts}
+          </select>
+        </td>`;
+      } else {
+        return `<td style="text-align:center;padding:5px 3px">
+          <input class="grade-input" type="number" min="0" max="${col.max}" step="0.1"
+            value="${raw}" placeholder="—"
+            onchange="setGradeVal(${s.id},allGradeCols().find(c=>c.source==='${col.source}'&&c.id===${col.id}),this.value);save()"
+            oninput="setGradeVal(${s.id},allGradeCols().find(c=>c.source==='${col.source}'&&c.id===${col.id}),this.value)">
+        </td>`;
+      }
+    }).join('');
+
+    const avg = weightedAvg(s);
+    const avgCol = avg===null?'var(--text-muted)':avg>=7?'var(--present)':avg>=5?'var(--late)':'var(--absent)';
+    return `<tr>
+      <td style="position:sticky;left:0;background:var(--surface);z-index:1">
+        <div class="student-name">${s.name}</div>
+        ${s.legajo?`<div style="font-size:10px;color:var(--text-muted)">${s.legajo}</div>`:''}
+      </td>
+      ${cells}
+      <td style="text-align:center;font-family:'DM Serif Display',serif;font-size:18px;color:${avgCol}">${avg||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// TRABAJO EN CLASE
+// ═══════════════════════════════════════
+let editingTaskId = null;
+
+function openAddTask() {
+  editingTaskId = null;
+  document.getElementById('mTaskTitle').textContent = 'Nuevo ítem';
+  document.getElementById('mTaskSaveBtn').textContent = 'Agregar';
+  document.getElementById('mTaskName').value = '';
+  document.getElementById('mTaskType').value = 'Trabajo práctico';
+  document.getElementById('mTaskGradeType').value = 'numeric';
+  document.getElementById('mTaskAskedDate').value = '';
+  document.getElementById('mTaskDate').value = '';
+  document.getElementById('mTaskMax').value = 10;
+  document.getElementById('mTaskWeight').value = 1;
+  document.getElementById('mTaskDesc').value = '';
+  openModal('modalTask');
+  setTimeout(()=>document.getElementById('mTaskName').focus(), 80);
+}
+
+function openEditTask(id) {
+  const t = getC().tasks.find(x=>x.id===id);
+  if (!t) return;
+  editingTaskId = id;
+  document.getElementById('mTaskTitle').textContent = 'Editar ítem';
+  document.getElementById('mTaskSaveBtn').textContent = 'Guardar';
+  document.getElementById('mTaskName').value = t.name;
+  document.getElementById('mTaskType').value = t.type;
+  document.getElementById('mTaskGradeType').value = t.gradeType||'numeric';
+  document.getElementById('mTaskAskedDate').value = t.askedDate||'';
+  document.getElementById('mTaskDate').value = t.date||'';
+  document.getElementById('mTaskMax').value = t.max||10;
+  document.getElementById('mTaskWeight').value = t.weight||1;
+  document.getElementById('mTaskDesc').value = t.desc||'';
+  openModal('modalTask');
+}
+
+function saveTask() {
+  const name = document.getElementById('mTaskName').value.trim(); if(!name) return;
+  const data = {
+    name,
+    type: document.getElementById('mTaskType').value,
+    gradeType: document.getElementById('mTaskGradeType').value,
+    askedDate: document.getElementById('mTaskAskedDate').value,
+    date: document.getElementById('mTaskDate').value,
+    max: parseFloat(document.getElementById('mTaskMax').value)||10,
+    weight: parseFloat(document.getElementById('mTaskWeight').value)||1,
+    desc: document.getElementById('mTaskDesc').value.trim()
+  };
+  if (editingTaskId !== null) {
+    Object.assign(getC().tasks.find(x=>x.id===editingTaskId), data);
+    editingTaskId = null;
+  } else {
+    getC().tasks.push({ id: uid(), ...data });
+  }
+  closeModal('modalTask'); save(); renderTasks(); renderGrades();
+}
+
+function deleteTask(id) {
+  getC().tasks = getC().tasks.filter(t=>t.id!==id);
+  save(); renderTasks(); renderGrades();
+}
+
+function toggleDelivery(sid, tid) {
+  const c=getC(), key=`${sid}_${tid}`;
+  c.taskDelivery[key] = {no:'si',si:'tarde',tarde:'no'}[c.taskDelivery[key]||'no'];
+  save(); renderTasks();
+}
+
+const dlLabel = {si:'✓ Entregó', no:'✗ No entregó', tarde:'⏰ Tarde'};
+const dlColor = {si:'var(--present)', no:'var(--absent)', tarde:'var(--late)'};
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const [y,m,dd] = d.split('-');
+  return `${dd}/${m}`;
+}
+
+function renderTasks() {
+  const c = getC();
+  const container = document.getElementById('taskContainer');
+  if (!c.tasks.length) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>Agregá un ítem con el botón de arriba.</p></div>`;
+    return;
+  }
+
+  // Group by category
+  const categories = ['Trabajo práctico','Informe','Exposición','Proyecto','Tarea','Examen / Parcial'];
+  const used = categories.filter(cat => c.tasks.some(t=>t.type===cat));
+
+  container.innerHTML = used.map(cat => {
+    const catTasks = c.tasks.filter(t => t.type === cat);
+    const taskCards = catTasks.map(task => {
+      const delivered = c.students.filter(s => c.taskDelivery[`${s.id}_${task.id}`]==='si').length;
+      const late      = c.students.filter(s => c.taskDelivery[`${s.id}_${task.id}`]==='tarde').length;
+      const missing   = c.students.length - delivered - late;
+
+      // Table: student | entrega | calificación
+      const rows = c.students.map(s => {
+        const dlSt = c.taskDelivery[`${s.id}_${task.id}`] || 'no';
+        const gradeKey = `task_${s.id}_${task.id}`;
+        const gradeVal = c.grades[gradeKey] !== undefined ? c.grades[gradeKey] : '';
+
+        let gradeCell;
+        if (task.gradeType === 'concept') {
+          const opts = CONCEPT_OPTS.map(o =>
+            `<option value="${o}" ${gradeVal===o?'selected':''}>${o}</option>`
+          ).join('');
+          gradeCell = `<select class="grade-input" style="width:64px;padding:4px"
+            onchange="getC().grades['task_${s.id}_${task.id}']=this.value;save()">
+            <option value="">—</option>${opts}
+          </select>`;
+        } else {
+          gradeCell = `<input class="grade-input" type="number" min="0" max="${task.max||10}" step="0.1"
+            value="${gradeVal}" placeholder="—"
+            onchange="getC().grades['task_${s.id}_${task.id}']=this.value;save()"
+            oninput="getC().grades['task_${s.id}_${task.id}']=this.value">`;
+        }
+
+        return `<tr>
+          <td style="font-size:13px;min-width:160px">${s.name}</td>
+          <td>
+            <button class="btn btn-ghost" style="padding:3px 10px;font-size:11px;color:${dlColor[dlSt]};border-color:${dlColor[dlSt]}"
+              onclick="toggleDelivery(${s.id},${task.id})">${dlLabel[dlSt]}</button>
+          </td>
+          <td style="text-align:center">${gradeCell}</td>
+        </tr>`;
+      }).join('');
+
+      return `<div class="task-card fade-in" style="margin-bottom:12px">
+        <div class="task-header">
+          <div style="flex:1;min-width:0">
+            <span class="task-name-label">${task.name}</span>
+            ${task.desc ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${task.desc}</div>` : ''}
+            <div style="display:flex;gap:14px;margin-top:4px;font-size:11px;color:var(--text-muted);flex-wrap:wrap">
+              ${task.askedDate ? `<span>📋 Pedido: ${fmtDate(task.askedDate)}</span>` : ''}
+              ${task.date      ? `<span>📅 Entrega: ${fmtDate(task.date)}</span>` : ''}
+              <span style="color:var(--accent2)">${task.gradeType==='concept'?'MB/B/R/I':'0–'+task.max} · ×${task.weight}</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <span style="font-size:11px;color:var(--text-muted)">${delivered}✓ ${late}⏰ ${missing}✗</span>
+            <button class="btn btn-ghost" style="padding:3px 9px;font-size:11px;color:var(--accent2);border-color:var(--accent2)" onclick="openEditTask(${task.id})">✎</button>
+            <button class="btn btn-ghost" style="padding:3px 9px;font-size:11px;color:var(--absent);border-color:var(--absent)" onclick="deleteTask(${task.id})">×</button>
+          </div>
+        </div>
+        ${c.students.length
+          ? `<table class="task-table">
+               <thead><tr>
+                 <th style="font-size:10px">Estudiante</th>
+                 <th style="font-size:10px">Entrega</th>
+                 <th style="font-size:10px;text-align:center">Nota</th>
+               </tr></thead>
+               <tbody>${rows}</tbody>
+             </table>`
+          : '<div style="padding:14px;text-align:center;color:var(--text-muted);font-size:12px">Agregá estudiantes en Asistencia.</div>'}
+      </div>`;
+    }).join('');
+
+    const catIcon = {'Trabajo práctico':'📄','Informe':'📊','Exposición':'🎤','Proyecto':'🔬','Tarea':'✏️','Examen / Parcial':'📝'}[cat]||'📋';
+    return `<div style="margin-bottom:28px">
+      <div style="font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        ${catIcon} ${cat}
+        <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text-muted)">${catTasks.length} ítem${catTasks.length!==1?'s':''}</span>
+      </div>
+      ${taskCards}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// INFO PANEL
+// ═══════════════════════════════════════
+function renderInfo() {
+  const c = getC();
+  const cc = classCounters();
+  const fields = [
+    {label:'Materia', value:c.name},
+    {label:'Escuela', value:c.school},
+    {label:'Año / División', value:c.year},
+    {label:'Ciclo lectivo', value:c.cycle},
+    {label:'Docente', value:c.teacher},
+    {label:'Día(s)', value:[c.day,c.day2].filter(Boolean).join(' y ')},
+    {label:'Horario', value:c.startTime&&c.endTime?c.startTime+' – '+c.endTime:c.startTime||c.endTime||''},
+    {label:'Turno', value:c.turno},
+    {label:'Aula', value:c.room},
+    {label:'Primera clase', value:c.firstDate},
+    {label:'Última clase', value:c.lastDate},
+    {label:'Receso invernal', value:c.recessStart&&c.recessEnd?c.recessStart+' al '+c.recessEnd:''},
+    {label:'Clases totales', value:cc.total+' clases'},
+    {label:'Antes del receso', value:cc.before+' clases'},
+    {label:'Después del receso', value:cc.after+' clases'},
+  ].filter(f=>f.value);
+  document.getElementById('infoGrid').innerHTML = fields.map(f=>`
+    <div class="info-card">
+      <div class="info-card-label">${f.label}</div>
+      <div class="info-card-value${f.value.length>20?' small':''}">${f.value}</div>
+    </div>`).join('') +
+    (c.notes?`<div class="info-card" style="grid-column:1/-1"><div class="info-card-label">Notas</div><div class="info-card-value small" style="white-space:pre-wrap;font-size:12px">${c.notes}</div></div>`:'');
+}
+
+// ═══════════════════════════════════════
+// SUMMARY
+// ═══════════════════════════════════════
+function renderSummary() {
+  const c=getC();
+  const attArr=c.students.map(s=>attStats(s).pct).filter(x=>x!==null);
+  const avgAtt=attArr.length?Math.round(attArr.reduce((a,b)=>a+b,0)/attArr.length):null;
+  const grArr=c.students.map(s=>weightedAvg(s)).filter(x=>x!==null);
+  const avgGr=grArr.length?(grArr.reduce((a,b)=>a+parseFloat(b),0)/grArr.length).toFixed(1):null;
+  const cc=classCounters();
+  document.getElementById('summaryStats').innerHTML=`
+    <div class="stat-card green"><div class="stat-value">${c.students.length}</div><div class="stat-label">Estudiantes</div></div>
+    <div class="stat-card blue"><div class="stat-value">${cc.total}</div><div class="stat-label">Clases dadas</div></div>
+    <div class="stat-card purple"><div class="stat-value">${cc.before}</div><div class="stat-label">Antes receso</div></div>
+    <div class="stat-card blue"><div class="stat-value">${cc.after}</div><div class="stat-label">Después receso</div></div>
+    ${cc.feriados>0?`<div class="stat-card yellow"><div class="stat-value">${cc.feriados}</div><div class="stat-label">Feriados</div></div>`:''}
+    ${cc.licencias>0?`<div class="stat-card red"><div class="stat-value">${cc.licencias}</div><div class="stat-label">Licencias</div></div>`:''}
+    <div class="stat-card yellow"><div class="stat-value">${avgAtt!==null?avgAtt+'%':'—'}</div><div class="stat-label">Asistencia prom.</div>${avgAtt!==null?`<div class="progress-bar"><div class="progress-fill" style="width:${avgAtt}%;background:var(--late)"></div></div>`:''}</div>
+    <div class="stat-card ${avgGr!==null&&parseFloat(avgGr)>=7?'green':avgGr!==null&&parseFloat(avgGr)>=5?'yellow':'red'}"><div class="stat-value">${avgGr||'—'}</div><div class="stat-label">Promedio general</div></div>`;
+  const tbody=document.getElementById('summaryBody');
+  if(!c.students.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state"><div class="icon">📊</div><p>Sin datos aún.</p></div></td></tr>`;return;}
+  tbody.innerHTML=c.students.map(s=>{
+    const st=attStats(s),avg=weightedAvg(s);
+    const pctCol=st.pct===null?'var(--text-muted)':st.pct>=75?'var(--present)':st.pct>=50?'var(--late)':'var(--absent)';
+    const badge=st.pct!==null?(st.pct>=75?`<span class="badge badge-green">Regular</span>`:st.pct>=50?`<span class="badge badge-yellow">En riesgo</span>`:`<span class="badge badge-red">Irregular</span>`):'';
+    const avgCol=avg===null?'var(--text-muted)':avg>=7?'var(--present)':avg>=5?'var(--late)':'var(--absent)';
+    const delivered=(c.tasks||[]).filter(t=>['si','tarde'].includes((c.taskDelivery||{})[`${s.id}_${t.id}`])).length;
+    const fg=c.finalGrades[s.id]||'';
+    return`<tr>
+      <td><div class="student-name">${s.name}</div>${s.legajo?`<div style="font-size:10px;color:var(--text-muted)">${s.legajo}</div>`:''}</td>
+      <td style="color:${pctCol};font-weight:600">${st.countable>0?st.pct+'%':'—'}</td>
+      <td>${badge||'—'}</td>
+      <td style="font-family:'DM Serif Display',serif;font-size:16px;color:${avgCol}">${avg||'—'}</td>
+      <td style="color:var(--accent2)">${totalParticipation(s)}</td>
+      <td>${c.tasks.length?`${delivered}/${c.tasks.length}`:'—'}</td>
+      <td><input class="grade-input" type="number" min="0" max="10" step="0.1" value="${fg}" placeholder="—" style="width:60px" onchange="getC().finalGrades[${s.id}]=this.value;save()" oninput="getC().finalGrades[${s.id}]=this.value"></td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════
+function exportCSV(){
+  const c=getC();
+  const rows=[['Nombre','Legajo','Email','% Asistencia','P','A','T','AC','F','L','Promedio Notas','Participación','Trabajos','Nota Final']];
+  c.students.forEach(s=>{
+    const st=attStats(s),avg=weightedAvg(s);
+    const del=c.tasks.filter(t=>['si','tarde'].includes(c.taskDelivery[`${s.id}_${t.id}`])).length;
+    rows.push([s.name,s.legajo||'',s.email||'',st.countable>0?st.pct+'%':'',st.P,st.A,st.T,st.AC,st.F,st.L,avg||'',totalParticipation(s),c.tasks.length?`${del}/${c.tasks.length}`:'',c.finalGrades[s.id]||'']);
+  });
+  const blob=new Blob([rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n')],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${c.name}_registro.csv`;a.click();
+}
+
+// ═══════════════════════════════════════
+// BACKUP / RESTORE
+// ═══════════════════════════════════════
+function exportBackup() {
+  const data = JSON.stringify({ courses, nextId }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  const now = new Date();
+  const stamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  a.href = URL.createObjectURL(blob);
+  a.download = `registro_clases_${stamp}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  // show feedback
+  const el = document.getElementById('saveStatus');
+  if (el) { el.textContent = '✓ Guardado'; setTimeout(()=>{ el.textContent=''; }, 3000); }
+}
+
+function importBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.courses) { alert('Archivo inválido.'); return; }
+      if (!confirm(`¿Cargar backup? Esto reemplazará los ${courses.length} curso(s) actuales.`)) return;
+      courses = data.courses;
+      nextId = data.nextId || 1;
+      save();
+      renderCourseGrid();
+      const el = document.getElementById('saveStatus');
+      if (el) { el.textContent = '✓ Cargado'; setTimeout(()=>{ el.textContent=''; }, 3000); }
+    } catch(err) {
+      alert('Error al leer el archivo. Asegurate de que sea un backup válido.');
+    }
+    // reset input so same file can be loaded again
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+load();
+if(!courses.length){
+  courses.push({
+    id:uid(),name:'Matemáticas 3°B',school:'Escuela N°12',year:'3°B',cycle:'2025',
+    teacher:'Prof. Ejemplo',day:'Lunes',day2:'Miércoles',turno:'Mañana',
+    startTime:'08:00',endTime:'09:30',room:'Aula 7',
+    firstDate:'2025-03-10',lastDate:'2025-11-28',
+    recessStart:'2025-07-07',recessEnd:'2025-07-18',notes:'',
+    students:[
+      {id:uid(),name:'García, Lucía',legajo:'001',email:'',participation:{}},
+      {id:uid(),name:'López, Martín',legajo:'002',email:'',participation:{}},
+      {id:uid(),name:'Rodríguez, Sol',legajo:'003',email:'',participation:{}},
+    ],
+    dates:[],attendance:{},exams:[],grades:{},tasks:[],taskDelivery:{},finalGrades:{}
+  });
+  save();
+}
+renderCourseGrid();
+</script>
+</body>
+</html>
