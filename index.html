@@ -5,6 +5,122 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Registro de Clase</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<!-- Firebase SDK -->
+<script type="module">
+// ─── PEGÁ AQUÍ TUS CREDENCIALES DE FIREBASE ───────────────────
+const FIREBASE_CONFIG = {
+  apiKey:            "PEGAR_apiKey",
+  authDomain:        "PEGAR_authDomain",
+  projectId:         "PEGAR_projectId",
+  storageBucket:     "PEGAR_storageBucket",
+  messagingSenderId: "PEGAR_messagingSenderId",
+  appId:             "PEGAR_appId"
+};
+// ──────────────────────────────────────────────────────────────
+
+import { initializeApp }                                             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, onSnapshot }                    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app  = initializeApp(FIREBASE_CONFIG);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+let unsubscribeSnapshot = null;
+let currentUser = null;
+let saveTimeout = null;
+
+window._googleSignIn = async () => {
+  try {
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch(e) { alert('Error al iniciar sesión: ' + e.message); }
+};
+
+window._signOut = async () => {
+  if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+  await signOut(auth);
+};
+
+onAuthStateChanged(auth, user => {
+  currentUser = user;
+  if (user) {
+    document.getElementById('loginScreen').style.display  = 'none';
+    document.getElementById('courseScreen').style.display = '';
+    const av = document.getElementById('userAvatar');
+    if (av && user.photoURL) { av.src = user.photoURL; av.style.display = 'block'; }
+    const un = document.getElementById('userName');
+    if (un) un.textContent = user.displayName || user.email;
+    startSync(user.uid);
+  } else {
+    document.getElementById('loginScreen').style.display  = 'flex';
+    document.getElementById('courseScreen').style.display = 'none';
+    document.getElementById('appScreen').classList.remove('open');
+    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+  }
+});
+
+function userDocRef(uid) { return doc(db, 'registros', uid); }
+
+function setSyncStatus(msg, color) {
+  const el = document.getElementById('syncStatus');
+  if (el) { el.textContent = msg; el.style.color = color; }
+}
+
+function startSync(uid) {
+  if (unsubscribeSnapshot) unsubscribeSnapshot();
+  setSyncStatus('⟳ Sincronizando…', 'var(--text-muted)');
+  unsubscribeSnapshot = onSnapshot(userDocRef(uid), snap => {
+    if (snap.exists()) {
+      const remote = snap.data();
+      if (!courses.length || (remote.updatedAt && remote.updatedAt > (window._lastSavedAt||0))) {
+        courses = remote.courses || [];
+        nextId  = remote.nextId  || 1;
+        window._lastSavedAt = remote.updatedAt || 0;
+        renderCourseGrid();
+        if (activeCourseId && courses.find(c=>c.id===activeCourseId)) {
+          updateHeader();
+          document.querySelectorAll('.panel.active').forEach(p => {
+            const id = p.id.replace('panel-','');
+            if (id==='asistencia') renderAttendance();
+            if (id==='calificaciones') renderGrades();
+            if (id==='trabajos') renderTasks();
+            if (id==='info') renderInfo();
+            if (id==='resumen') renderSummary();
+          });
+        }
+      }
+      setSyncStatus('✓ Sincronizado', 'var(--present)');
+      setTimeout(()=>setSyncStatus('',''), 3000);
+    } else {
+      pushToFirestore(uid);
+    }
+  }, err => {
+    setSyncStatus('⚠ Sin conexión', 'var(--late)');
+  });
+}
+
+async function pushToFirestore(uid) {
+  try {
+    const ts = Date.now();
+    window._lastSavedAt = ts;
+    await setDoc(userDocRef(uid), { courses, nextId, updatedAt: ts });
+    setSyncStatus('✓ Guardado', 'var(--present)');
+    setTimeout(()=>setSyncStatus('',''), 2500);
+  } catch(e) {
+    setSyncStatus('⚠ Error al guardar', 'var(--absent)');
+  }
+}
+
+window._firebaseReady = true;
+window._firebaseSave = () => {
+  try { localStorage.setItem('rc3', JSON.stringify({courses, nextId})); } catch(e){}
+  setSyncStatus('…', 'var(--text-muted)');
+  if (saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    if (currentUser) pushToFirestore(currentUser.uid);
+  }, 1500);
+};
+</script>
 <style>
 :root {
   --bg:#0f0f0f; --surface:#181818; --surface2:#222; --border:#2e2e2e;
@@ -16,8 +132,6 @@
 body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;overflow-x:hidden;}
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.3;
   background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");}
-
-/* ── COURSE SCREEN ── */
 #courseScreen{position:relative;z-index:1;min-height:100vh;padding:48px;}
 .app-brand{display:flex;align-items:flex-end;gap:16px;margin-bottom:48px;}
 .logo-mark{font-family:'DM Serif Display',serif;font-size:52px;line-height:1;color:var(--accent);letter-spacing:-2px;}
@@ -41,8 +155,6 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opa
 .add-course-card{background:transparent;border:1px dashed var(--border);border-radius:12px;padding:24px;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:130px;color:var(--text-muted);font-size:13px;}
 .add-course-card:hover{border-color:var(--accent);color:var(--accent);}
 .add-course-card .plus{font-size:30px;line-height:1;}
-
-/* ── APP SCREEN ── */
 #appScreen{display:none;}
 #appScreen.open{display:block;}
 header{position:relative;z-index:1;padding:18px 48px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
@@ -53,25 +165,21 @@ header{position:relative;z-index:1;padding:18px 48px;border-bottom:1px solid var
 .header-sub{font-size:11px;color:var(--text-muted);}
 .header-edit-btn{background:none;border:none;color:var(--text-muted);font-size:14px;cursor:pointer;padding:0 4px;}
 .header-edit-btn:hover{color:var(--accent);}
-
 .tabs{position:relative;z-index:1;display:flex;gap:2px;padding:0 48px;border-bottom:1px solid var(--border);}
 .tab{padding:13px 18px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;transition:all .2s;margin-bottom:-1px;}
 .tab:hover{color:var(--text);}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
-
 main{position:relative;z-index:1;padding:28px 48px;}
 .panel{display:none;}
 .panel.active{display:block;}
 .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;}
 .section-title{font-family:'DM Serif Display',serif;font-size:26px;font-weight:400;}
-
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.08em;cursor:pointer;border:1px solid transparent;transition:all .15s;}
 .btn-primary{background:var(--accent);color:#0f0f0f;font-weight:500;}
 .btn-primary:hover{background:#ff8070;}
 .btn-ghost{background:transparent;border-color:var(--border);color:var(--text-muted);}
 .btn-ghost:hover{border-color:var(--text);color:var(--text);}
 .btn-sm{padding:5px 11px;font-size:11px;}
-
 .table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);}
 table{width:100%;border-collapse:collapse;font-size:12px;}
 th{background:var(--surface);padding:11px 13px;text-align:left;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap;}
@@ -79,8 +187,6 @@ td{padding:9px 13px;border-bottom:1px solid var(--border);vertical-align:middle;
 tr:last-child td{border-bottom:none;}
 tr:hover td{background:var(--surface2);}
 .student-name{font-family:'DM Serif Display',serif;font-size:15px;}
-
-/* ATTENDANCE CHIPS */
 .att-chip{display:inline-flex;align-items:center;justify-content:center;width:28px;height:24px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;border:none;transition:all .12s;user-select:none;letter-spacing:.02em;}
 .att-chip.P{background:var(--present);color:#0f0f0f;}
 .att-chip.A{background:var(--absent);color:#fff;}
@@ -90,15 +196,12 @@ tr:hover td{background:var(--surface2);}
 .att-chip.L{background:var(--leave);color:#fff;}
 .att-chip.R{background:var(--recess);color:#fff;}
 .att-chip.none{background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);}
-
 .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;letter-spacing:.06em;}
 .badge-green{background:rgba(91,255,160,.12);color:var(--present);border:1px solid rgba(91,255,160,.3);}
 .badge-yellow{background:rgba(255,204,107,.12);color:var(--late);border:1px solid rgba(255,204,107,.3);}
 .badge-red{background:rgba(255,107,91,.12);color:var(--absent);border:1px solid rgba(255,107,91,.3);}
-
 .grade-input{width:54px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:5px 7px;outline:none;text-align:center;transition:border-color .15s;}
 .grade-input:focus{border-color:var(--accent2);}
-
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:relative;overflow:hidden;}
 .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
@@ -111,20 +214,14 @@ tr:hover td{background:var(--surface2);}
 .stat-label{font-size:10px;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;}
 .progress-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-top:6px;}
 .progress-fill{height:100%;border-radius:2px;transition:width .4s;}
-
-/* DATE PILLS */
 .date-header{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
 .date-pill{display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 10px 4px 8px;font-size:11px;}
 .date-pill.is-R{border-color:var(--recess);color:var(--recess);}
 .del-date{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:15px;line-height:1;padding:0 2px;border-radius:50%;}
 .del-date:hover{color:var(--absent);}
-
-/* PARTICIPATION EMOJI */
 .part-btn{background:none;border:none;cursor:pointer;font-size:16px;line-height:1;padding:2px;border-radius:4px;transition:transform .15s;display:block;margin:2px auto 0;}
 .part-btn:hover{transform:scale(1.35);}
 .part-total{font-size:10px;color:var(--accent2);text-align:center;margin-top:1px;font-weight:500;}
-
-/* TASK CARDS */
 .task-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden;}
 .task-header{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;}
 .task-name-label{font-family:'DM Serif Display',serif;font-size:17px;}
@@ -132,8 +229,6 @@ tr:hover td{background:var(--surface2);}
 .task-table{width:100%;}
 .task-table td{padding:8px 18px;border-bottom:1px solid var(--border);}
 .task-table tr:last-child td{border-bottom:none;}
-
-/* MODALS */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(5px);}
 .modal-overlay.open{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:30px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;animation:slideUp .2s ease;}
@@ -148,33 +243,38 @@ tr:hover td{background:var(--surface2);}
 select.form-input{cursor:pointer;}
 .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
 .section-divider{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:18px 0 12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
-
-/* INFO PANEL */
 .info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:24px;}
 .info-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
 .info-card-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;}
 .info-card-value{font-family:'DM Serif Display',serif;font-size:17px;}
 .info-card-value.small{font-family:'DM Mono',monospace;font-size:13px;}
-
-/* CLASS COUNTER SECTION */
 .class-counter{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px;}
 .counter-pill{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 18px;text-align:center;}
 .counter-pill .num{font-family:'DM Serif Display',serif;font-size:28px;line-height:1;color:var(--accent);}
 .counter-pill .lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-top:2px;}
-
-/* LEGEND */
 .legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;font-size:11px;color:var(--text-muted);}
 .legend-item{display:flex;align-items:center;gap:5px;}
-
 .fade-in{animation:fadeIn .25s ease;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
 .empty-state{text-align:center;padding:50px 20px;color:var(--text-muted);}
 .empty-state .icon{font-size:36px;margin-bottom:10px;}
 .empty-state p{font-size:13px;}
-
-/* RECESO row styling */
-tr.receso-row td{background:rgba(148,163,184,.06);color:var(--recess);}
-
+#loginScreen{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:28px;}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:48px 40px;text-align:center;max-width:360px;width:90%;}
+.login-logo{font-family:'DM Serif Display',serif;font-size:64px;color:var(--accent);line-height:1;margin-bottom:8px;}
+.login-title{font-family:'DM Serif Display',serif;font-size:26px;font-weight:400;margin-bottom:6px;}
+.login-sub{font-size:12px;color:var(--text-muted);margin-bottom:32px;line-height:1.6;}
+.google-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#333;border:none;border-radius:8px;padding:13px 24px;font-size:14px;font-weight:500;cursor:pointer;width:100%;transition:all .15s;font-family:'DM Mono',monospace;}
+.google-btn:hover{background:#f5f5f5;transform:translateY(-1px);}
+.google-btn svg{flex-shrink:0;}
+.user-bar{display:flex;align-items:center;gap:8px;margin-left:auto;}
+#userAvatar{width:28px;height:28px;border-radius:50%;object-fit:cover;display:none;}
+#userName{font-size:11px;color:var(--text-muted);}
+.signout-btn{background:none;border:1px solid var(--border);border-radius:var(--radius);color:var(--text-muted);font-family:'DM Mono',monospace;font-size:11px;padding:5px 10px;cursor:pointer;transition:all .15s;}
+.signout-btn:hover{border-color:var(--absent);color:var(--absent);}
+#syncStatus{font-size:11px;margin-right:8px;}
+.setup-banner{background:rgba(255,107,91,.08);border:1px solid rgba(255,107,91,.3);border-radius:var(--radius);padding:14px 18px;margin-bottom:20px;font-size:12px;line-height:1.7;display:none;}
+.setup-banner.show{display:block;}
 @media(max-width:700px){
   #courseScreen,header,main,.tabs{padding-left:16px;padding-right:16px;}
   .stat-grid{grid-template-columns:1fr 1fr;}
@@ -183,8 +283,24 @@ tr.receso-row td{background:rgba(148,163,184,.06);color:var(--recess);}
 </style>
 </head>
 <body>
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" style="display:none">
+  <div class="login-card">
+    <div class="login-logo">RC</div>
+    <div class="login-title">Registro de Clase</div>
+    <div class="login-sub">Iniciá sesión con tu cuenta de Google<br>para sincronizar en todos tus dispositivos.</div>
+    <button class="google-btn" onclick="window._googleSignIn && window._googleSignIn()">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
+      Continuar con Google
+    </button>
+    <div id="setupBanner" class="setup-banner" style="margin-top:20px;margin-bottom:0">
+      ⚠ <strong>Firebase no configurado todavía.</strong><br>
+      Seguí las instrucciones al final de la página para activar la sincronización.
+    </div>
+  </div>
+</div>
 
-<!-- ══════════ COURSE SELECTION ══════════ -->
+<!-- COURSE SELECTION -->
 <div id="courseScreen">
   <div class="app-brand">
     <div class="logo-mark">RC</div>
@@ -192,32 +308,38 @@ tr.receso-row td{background:rgba(148,163,184,.06);color:var(--recess);}
       <h1>Registro de Clase</h1>
       <p>Gestión de cursos · 2025</p>
     </div>
+    <div class="user-bar" style="margin-left:auto">
+      <span id="syncStatus"></span>
+      <img id="userAvatar" src="" alt="">
+      <span id="userName"></span>
+      <button class="signout-btn" onclick="window._signOut()">Cerrar sesión</button>
+    </div>
   </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
-    <div class="courses-title" style="margin-bottom:0">Mis Cursos</div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <span id="saveStatus" style="font-size:11px;color:var(--text-muted);margin-right:4px"></span>
-      <button class="btn btn-ghost btn-sm" onclick="exportBackup()" title="Descarga un archivo .json con todos los datos">&#x1F4BE; Guardar copia</button>
-      <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Carga un archivo .json guardado anteriormente">
-        &#x1F4C2; Cargar copia
-        <input type="file" accept=".json" id="importFile" style="display:none" onchange="importBackup(event)">
-      </label>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div class="courses-title">Tus cursos</div>
+    <div style="display:flex;gap:8px">
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importBackup(event)">
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('importFile').click()">📂 Cargar copia</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportBackup()" title="Guardar todos los datos en un archivo .json">💾 Guardar</button>
     </div>
   </div>
   <div class="course-grid" id="courseGrid"></div>
 </div>
-
-<!-- ══════════ APP (single course) ══════════ -->
+<!-- APP SCREEN -->
 <div id="appScreen">
   <header>
     <button class="back-btn" onclick="goBack()">← Cursos</button>
-    <span class="header-sep">/</span>
-    <div style="flex:1;min-width:0">
+    <span class="header-sep">|</span>
+    <div>
       <div class="header-course-name" id="activeCourseTitle"></div>
       <div class="header-sub" id="activeCourseSubtitle"></div>
     </div>
-    <button class="header-edit-btn" title="Editar curso" onclick="openEditCourse()">✎ editar</button>
-    <button class="btn btn-primary btn-sm" onclick="exportBackup()" title="Guardar todos los datos en un archivo .json">&#x1F4BE; Guardar</button>
+    <button class="header-edit-btn" onclick="openEditCourse()" title="Editar curso">✎</button>
+    <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
+      <input type="file" id="importFileApp" accept=".json" style="display:none" onchange="importBackup(event)">
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('importFileApp').click()">📂 Cargar</button>
+      <button class="btn btn-ghost btn-sm" id="saveStatus" onclick="exportBackup()">💾 Guardar</button>
+    </div>
   </header>
   <nav class="tabs">
     <button class="tab active" onclick="showTab('asistencia',this)">Asistencia</button>
@@ -227,7 +349,6 @@ tr.receso-row td{background:rgba(148,163,184,.06);color:var(--recess);}
     <button class="tab" onclick="showTab('resumen',this)">Resumen</button>
   </nav>
   <main>
-
     <!-- ASISTENCIA -->
     <div class="panel active" id="panel-asistencia">
       <div class="section-header">
@@ -238,9 +359,7 @@ tr.receso-row td{background:rgba(148,163,184,.06);color:var(--recess);}
           <button class="btn btn-primary btn-sm" onclick="openAddStudent()">+ Estudiante</button>
         </div>
       </div>
-
       <div class="class-counter" id="classCounter"></div>
-
       <div class="table-wrap">
         <table>
           <thead id="attThead">
@@ -249,7 +368,6 @@ tr.receso-row td{background:rgba(148,163,184,.06);color:var(--recess);}
           <tbody id="attBody"></tbody>
         </table>
       </div>
-
       <div class="legend" style="margin-top:14px">
         <div class="legend-item"><span class="att-chip P" style="pointer-events:none">P</span> Presente</div>
         <div class="legend-item"><span class="att-chip A" style="pointer-events:none">A</span> Ausente</div>
@@ -313,12 +431,10 @@ tr.receso-row td{background:rgba(148,163,184,.06);color:var(--recess);}
         </table>
       </div>
     </div>
-
   </main>
 </div>
 
-<!-- ══════════ MODALS ══════════ -->
-
+<!-- MODALS -->
 <!-- COURSE MODAL -->
 <div class="modal-overlay" id="modalCourse">
   <div class="modal">
@@ -518,19 +634,20 @@ tr.receso-row td{background:rgba(148,163,184,.06);color:var(--recess);}
 </div>
 
 <script>
-// ═══════════════════════════════════════
 // STATE
-// ═══════════════════════════════════════
 let courses = [], activeCourseId = null, renamingId = null, nextId = 1;
 const uid = () => nextId++;
 const getC = () => courses.find(c => c.id === activeCourseId);
-
 const DAY_MAP = { 'Lunes':1,'Martes':2,'Miércoles':3,'Jueves':4,'Viernes':5,'Sábado':6 };
 
-// ═══════════════════════════════════════
 // PERSIST
-// ═══════════════════════════════════════
-function save() { try { localStorage.setItem('rc3', JSON.stringify({courses, nextId})); } catch(e){} }
+function save() {
+  if (window._firebaseReady && window._firebaseSave) {
+    window._firebaseSave();
+  } else {
+    try { localStorage.setItem('rc3', JSON.stringify({courses, nextId})); } catch(e){}
+  }
+}
 function load() {
   try {
     const d = JSON.parse(localStorage.getItem('rc3'));
@@ -538,9 +655,7 @@ function load() {
   } catch(e){}
 }
 
-// ═══════════════════════════════════════
 // COURSE SCREEN
-// ═══════════════════════════════════════
 function renderCourseGrid() {
   const grid = document.getElementById('courseGrid');
   grid.innerHTML = courses.map(c => `
@@ -630,7 +745,7 @@ function saveCourse() {
     renamingId = null;
     if (activeCourseId) { updateHeader(); renderInfo(); }
   } else {
-    courses.push({ id:uid(), ...data, students:[], dates:[], attendance:{}, exams:[], grades:{}, tasks:[], taskDelivery:{}, finalGrades:{} });
+    courses.push({ id:uid(), ...data, students:[], dates:[], attendance:{}, exams:[], grades:{}, tasks:[], taskDelivery:{}, taskDeliveryDate:{}, finalGrades:{} });
   }
   closeModal('modalCourse'); save(); renderCourseGrid();
 }
@@ -638,9 +753,7 @@ function saveCourse() {
 function deleteCourse(id) { if(!confirm('¿Eliminar este curso y todos sus datos?'))return; courses=courses.filter(c=>c.id!==id); save(); renderCourseGrid(); }
 const v = id => document.getElementById(id).value.trim();
 
-// ═══════════════════════════════════════
 // TABS
-// ═══════════════════════════════════════
 function showTab(name, btn) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
@@ -653,16 +766,12 @@ function showTab(name, btn) {
   if(name==='resumen') renderSummary();
 }
 
-// ═══════════════════════════════════════
 // MODALS
-// ═══════════════════════════════════════
 const openModal = id => document.getElementById(id).classList.add('open');
 const closeModal = id => document.getElementById(id).classList.remove('open');
 document.querySelectorAll('.modal-overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');}));
 
-// ═══════════════════════════════════════
 // STUDENTS
-// ═══════════════════════════════════════
 function openAddStudent() { ['mStudentName','mStudentLeg','mStudentEmail'].forEach(id=>document.getElementById(id).value=''); openModal('modalStudent'); setTimeout(()=>document.getElementById('mStudentName').focus(),80); }
 function saveStudent() {
   const name = document.getElementById('mStudentName').value.trim();
@@ -671,9 +780,18 @@ function saveStudent() {
   closeModal('modalStudent'); save(); renderAttendance();
 }
 
-// ═══════════════════════════════════════
+function deleteStudent(id) {
+  if (!confirm('¿Eliminar este estudiante y todos sus datos?')) return;
+  const c = getC();
+  c.students = c.students.filter(s => s.id !== id);
+  Object.keys(c.attendance).forEach(k => { if (k.startsWith(id+'_')) delete c.attendance[k]; });
+  Object.keys(c.grades).forEach(k => { if (k.includes('_'+id+'_') || k.startsWith(id+'_')) delete c.grades[k]; });
+  Object.keys(c.taskDelivery).forEach(k => { if (k.startsWith(id+'_')) delete c.taskDelivery[k]; });
+  if (c.taskDeliveryDate) Object.keys(c.taskDeliveryDate).forEach(k => { if (k.startsWith(id+'_')) delete c.taskDeliveryDate[k]; });
+  delete c.finalGrades[id];
+  save(); renderAttendance(); renderGrades(); renderTasks();
+}
 // DATES – MANUAL
-// ═══════════════════════════════════════
 let editingDateId = null;
 
 function openAddDate() {
@@ -715,9 +833,7 @@ function saveDate() {
 
 function deleteDate(id) { getC().dates=getC().dates.filter(d=>d.id!==id); save(); renderAttendance(); }
 
-// ═══════════════════════════════════════
 // DATES – GENERATE
-// ═══════════════════════════════════════
 function openGenerateDates() {
   const c = getC();
   document.getElementById('genFrom').value = c.firstDate||'';
@@ -737,16 +853,13 @@ function computeDates(preview) {
   const rFrom= document.getElementById('genRecessFrom').value;
   const rTo  = document.getElementById('genRecessTo').value;
   if (!from || !to) { alert('Completá las fechas de inicio y fin.'); return null; }
-
   const days = [c.day, c.day2].map(d=>DAY_MAP[d]).filter(Boolean);
   if (!days.length) { alert('Configurá el día de la semana en "Info del Curso" primero.'); return null; }
-
   const result = [];
   let cur = new Date(from+'T12:00:00');
   const end = new Date(to+'T12:00:00');
   const rS = rFrom ? new Date(rFrom+'T00:00:00') : null;
   const rE = rTo   ? new Date(rTo+'T23:59:59')   : null;
-
   while (cur <= end) {
     if (days.includes(cur.getDay())) {
       const dateStr = cur.toISOString().split('T')[0];
@@ -769,10 +882,8 @@ function previewDates() {
 function generateDates() {
   const dates = computeDates(false); if(!dates) return;
   const c = getC();
-  // remove existing generated dates, keep manual ones? ask user
   if (c.dates.length > 0) {
     if (!confirm(`Ya hay ${c.dates.length} fechas. ¿Reemplazar todas o agregar las nuevas (sin duplicar)?`)) { closeModal('modalGenDates'); return; }
-    // merge without duplicating
     const existing = new Set(c.dates.map(d=>d.date));
     const toAdd = dates.filter(d=>!existing.has(d.date));
     c.dates.push(...toAdd);
@@ -783,14 +894,9 @@ function generateDates() {
   closeModal('modalGenDates'); save(); renderAttendance();
 }
 
-// ═══════════════════════════════════════
 // ATTENDANCE
-// ═══════════════════════════════════════
-// Cycle: none → P → A → T → AC → F → L → R → none
 const ATT_CYCLE = ['none','P','A','T','AC','F','L','R'];
-// States that DO count in attendance denominator
-const ATT_COUNTS = new Set(['P','A','T','AC']); // F, L, R don't count
-// States that count as "present/attended"
+const ATT_COUNTS = new Set(['P','A','T','AC']);
 const ATT_PRESENT_WEIGHT = { P:1, T:0.5, AC:0.75, A:0, F:0, L:0, R:0, none:0 };
 
 function cycleAtt(sid, did) {
@@ -810,17 +916,14 @@ function attStats(s) {
     if(v==='P')P++; else if(v==='A')A++; else if(v==='T')T++;
     else if(v==='AC')AC++; else if(v==='F')F++; else if(v==='L')L++; else if(v==='R')R++;
   });
-  const countable = P+A+T+AC; // F, L, R excluded from denominator
-  const attended = P*1 + T*0.5; // AC no suma — presente en clase pero no cuenta como asistencia
+  const countable = P+A+T+AC;
+  const attended = P*1 + T*0.5;
   const pct = countable>0 ? Math.round((attended/countable)*100) : null;
   return {pct, P, A, T, AC, F, L, R, total:c.dates.length, countable};
 }
 
-// participation: per-class emojis. Value: 0=none, 1=😐, 2=😊, 3=🌟
-// 0=none, 1=😐(+1), 2=😊(+2), 3=🌟(+3), 4=😤(-1), 5=😴(-2)
 const PART_EMOJI  = ['', '😐', '😊', '🌟', '😤', '😴'];
 const PART_SCORE  = [  0,   1,   2,   3,  -1,  -2];
-const PART_CYCLE  = [0, 1, 2, 3, 4, 5]; // click cycles through all
 
 function cycleParticipation(sid, did) {
   const s = getC().students.find(s=>s.id===sid);
@@ -837,10 +940,8 @@ function totalParticipation(s) {
   return Object.values(s.participation).reduce((acc, v) => acc + PART_SCORE[v||0], 0);
 }
 
-// Class counters: before recess, after recess, total
 function classCounters() {
   const c = getC();
-  // Solo cuentan las clases realmente dadas (ni F, ni L, ni R)
   const givenDates  = c.dates.filter(d => d.type === 'normal');
   const recessDates = c.dates.filter(d => d.type === 'R');
   const fDates      = c.dates.filter(d => d.type === 'F');
@@ -854,8 +955,6 @@ function classCounters() {
 
 function renderAttendance() {
   const c = getC();
-
-  // class counters
   const cc = classCounters();
   document.getElementById('classCounter').innerHTML = `
     <div class="counter-pill"><div class="num">${cc.total}</div><div class="lbl">Clases dadas</div></div>
@@ -867,15 +966,11 @@ function renderAttendance() {
   `;
 
   if (!c.dates.length) {
-    document.getElementById('attDateHeaders').innerHTML = '';
-    document.getElementById('attPartHeaders').innerHTML = '';
-    document.getElementById('attPartHeaderRow').style.display = 'none';
     document.getElementById('attBody').innerHTML =
       `<tr><td colspan="4"><div class="empty-state"><div class="icon">📅</div><p>Usá "Generar fechas" para crear el calendario automático →</p></div></td></tr>`;
     return;
   }
 
-  // Build header row: fixed cols + one <th> per date
   const headerRow = document.getElementById('attDateHeaderRow');
   const dateCols = c.dates.map(d => {
     const col = d.type==='F'?'var(--holiday)':d.type==='L'?'var(--leave)':d.type==='R'?'var(--recess)':'var(--text-muted)';
@@ -929,9 +1024,14 @@ function renderAttendance() {
     const partSign = totalPart > 0 ? '+' : '';
     return `<tr class="fade-in">
       <td style="position:sticky;left:0;background:var(--surface);z-index:1">
-        <div class="student-name">${s.name}</div>
-        ${s.legajo ? `<div style="font-size:10px;color:var(--text-muted)">${s.legajo}</div>` : ''}
-        ${totalPart !== 0 ? `<div class="part-total" style="color:${partColor}">${partSign}${totalPart} pts</div>` : ''}
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">
+          <div>
+            <div class="student-name">${s.name}</div>
+            ${s.legajo ? `<div style="font-size:10px;color:var(--text-muted)">${s.legajo}</div>` : ''}
+            ${totalPart !== 0 ? `<div class="part-total" style="color:${partColor}">${partSign}${totalPart} pts</div>` : ''}
+          </div>
+          <button class="del-date" onclick="deleteStudent(${s.id})" title="Eliminar estudiante" style="color:var(--absent);flex-shrink:0;margin-top:2px">×</button>
+        </div>
       </td>
       ${attCells}
       <td style="color:${col};font-weight:600;white-space:nowrap">${pctStr}</td>
@@ -940,12 +1040,9 @@ function renderAttendance() {
   }).join('');
 }
 
-// ═══════════════════════════════════════
 // EXAMS / GRADES
-// ═══════════════════════════════════════
 const CONCEPT_VALS = { 'MB':10, 'B':7.5, 'R':5, 'I':2 };
 const CONCEPT_OPTS = ['MB','B','R','I'];
-
 let editingExamId = null;
 
 function openAddExam() {
@@ -999,7 +1096,6 @@ function deleteExam(id) {
   save(); renderGrades();
 }
 
-// Build combined columns: tasks (with grade) + exams
 function allGradeCols() {
   const c = getC();
   const taskCols = (c.tasks||[])
@@ -1024,7 +1120,6 @@ function setGradeVal(sid, col, val) {
   c.grades[key] = val;
 }
 
-// Weighted average across all columns (tasks + exams)
 function weightedAvg(s) {
   const c = getC();
   const cols = allGradeCols();
@@ -1059,18 +1154,13 @@ function renderGrades() {
     return;
   }
 
-  // Build header: sticky student col + one th per grade col + avg
   const colHeaders = cols.map(col => {
     const [yy,mm,dd] = (col.date||'').split('-');
     const dateStr = col.date ? `${dd}/${mm}` : '';
     const srcColor = col.source==='task' ? 'var(--accent2)' : 'var(--inclass)';
     const srcLabel = col.source==='task' ? col.type : 'Evaluación';
-    const editFn = col.source==='exam'
-      ? `openEditExam(${col.id})`
-      : `openEditTask(${col.id})`;
-    const delFn = col.source==='exam'
-      ? `deleteExam(${col.id})`
-      : `deleteTask(${col.id})`;
+    const editFn = col.source==='exam' ? `openEditExam(${col.id})` : `openEditTask(${col.id})`;
+    const delFn  = col.source==='exam' ? `deleteExam(${col.id})`   : `deleteTask(${col.id})`;
     return `<th style="min-width:80px;text-align:center;vertical-align:bottom;padding:8px 4px 4px">
       <div style="font-size:9px;color:${srcColor};text-transform:uppercase;letter-spacing:.08em">${srcLabel}</div>
       <div style="font-size:11px;font-weight:500;max-width:76px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${col.name}">${col.name}</div>
@@ -1087,7 +1177,6 @@ function renderGrades() {
     colHeaders +
     `<th style="white-space:nowrap;text-align:center">Promedio</th>`;
 
-  // Build rows
   tbody.innerHTML = c.students.map(s => {
     const cells = cols.map(col => {
       const raw = gradeVal(c, s.id, col);
@@ -1115,8 +1204,13 @@ function renderGrades() {
     const avgCol = avg===null?'var(--text-muted)':avg>=7?'var(--present)':avg>=5?'var(--late)':'var(--absent)';
     return `<tr>
       <td style="position:sticky;left:0;background:var(--surface);z-index:1">
-        <div class="student-name">${s.name}</div>
-        ${s.legajo?`<div style="font-size:10px;color:var(--text-muted)">${s.legajo}</div>`:''}
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">
+          <div>
+            <div class="student-name">${s.name}</div>
+            ${s.legajo?`<div style="font-size:10px;color:var(--text-muted)">${s.legajo}</div>`:''}
+          </div>
+          <button class="del-date" onclick="deleteStudent(${s.id})" title="Eliminar estudiante" style="color:var(--absent);flex-shrink:0;margin-top:2px">×</button>
+        </div>
       </td>
       ${cells}
       <td style="text-align:center;font-family:'DM Serif Display',serif;font-size:18px;color:${avgCol}">${avg||'—'}</td>
@@ -1124,9 +1218,7 @@ function renderGrades() {
   }).join('');
 }
 
-// ═══════════════════════════════════════
 // TRABAJO EN CLASE
-// ═══════════════════════════════════════
 let editingTaskId = null;
 
 function openAddTask() {
@@ -1189,9 +1281,18 @@ function deleteTask(id) {
 }
 
 function toggleDelivery(sid, tid) {
-  const c=getC(), key=`${sid}_${tid}`;
-  c.taskDelivery[key] = {no:'si',si:'tarde',tarde:'no'}[c.taskDelivery[key]||'no'];
+  const c = getC(), key = `${sid}_${tid}`;
+  const cur = c.taskDelivery[key] || 'no';
+  c.taskDelivery[key] = {no:'si', si:'tarde', tarde:'no'}[cur];
+  if (c.taskDelivery[key] !== 'tarde') delete c.taskDeliveryDate[`${sid}_${tid}`];
   save(); renderTasks();
+}
+
+function setLateDate(sid, tid, val) {
+  const c = getC();
+  if (!c.taskDeliveryDate) c.taskDeliveryDate = {};
+  c.taskDeliveryDate[`${sid}_${tid}`] = val;
+  save();
 }
 
 const dlLabel = {si:'✓ Entregó', no:'✗ No entregó', tarde:'⏰ Tarde'};
@@ -1202,7 +1303,6 @@ function fmtDate(d) {
   const [y,m,dd] = d.split('-');
   return `${dd}/${m}`;
 }
-
 function renderTasks() {
   const c = getC();
   const container = document.getElementById('taskContainer');
@@ -1211,7 +1311,6 @@ function renderTasks() {
     return;
   }
 
-  // Group by category
   const categories = ['Trabajo práctico','Informe','Exposición','Proyecto','Tarea','Examen / Parcial'];
   const used = categories.filter(cat => c.tasks.some(t=>t.type===cat));
 
@@ -1220,9 +1319,8 @@ function renderTasks() {
     const taskCards = catTasks.map(task => {
       const delivered = c.students.filter(s => c.taskDelivery[`${s.id}_${task.id}`]==='si').length;
       const late      = c.students.filter(s => c.taskDelivery[`${s.id}_${task.id}`]==='tarde').length;
-      const missing   = c.students.length - delivered - late;
+      const missing   = c.students.filter(s => !c.taskDelivery[`${s.id}_${task.id}`] || c.taskDelivery[`${s.id}_${task.id}`]==='no').length;
 
-      // Table: student | entrega | calificación
       const rows = c.students.map(s => {
         const dlSt = c.taskDelivery[`${s.id}_${task.id}`] || 'no';
         const gradeKey = `task_${s.id}_${task.id}`;
@@ -1244,11 +1342,22 @@ function renderTasks() {
             oninput="getC().grades['task_${s.id}_${task.id}']=this.value">`;
         }
 
+        const lateDate = (c.taskDeliveryDate||{})[`${s.id}_${task.id}`] || '';
+        const lateDateFmt = lateDate ? fmtDate(lateDate) : '';
+        const lateDateCell = dlSt === 'tarde'
+          ? `<input type="date" class="grade-input" style="width:110px;font-size:11px" value="${lateDate}" title="Fecha de entrega tardía"
+              onchange="setLateDate(${s.id},${task.id},this.value);renderTasks()">`
+          : '';
+
         return `<tr>
           <td style="font-size:13px;min-width:160px">${s.name}</td>
           <td>
-            <button class="btn btn-ghost" style="padding:3px 10px;font-size:11px;color:${dlColor[dlSt]};border-color:${dlColor[dlSt]}"
-              onclick="toggleDelivery(${s.id},${task.id})">${dlLabel[dlSt]}</button>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-ghost" style="padding:3px 10px;font-size:11px;color:${dlColor[dlSt]};border-color:${dlColor[dlSt]}"
+                onclick="toggleDelivery(${s.id},${task.id})">${dlLabel[dlSt]}</button>
+              ${lateDateCell}
+              ${dlSt==='tarde'&&lateDateFmt ? `<span style="font-size:10px;color:var(--late)">${lateDateFmt}</span>` : ''}
+            </div>
           </td>
           <td style="text-align:center">${gradeCell}</td>
         </tr>`;
@@ -1295,9 +1404,7 @@ function renderTasks() {
   }).join('');
 }
 
-// ═══════════════════════════════════════
 // INFO PANEL
-// ═══════════════════════════════════════
 function renderInfo() {
   const c = getC();
   const cc = classCounters();
@@ -1326,9 +1433,7 @@ function renderInfo() {
     (c.notes?`<div class="info-card" style="grid-column:1/-1"><div class="info-card-label">Notas</div><div class="info-card-value small" style="white-space:pre-wrap;font-size:12px">${c.notes}</div></div>`:'');
 }
 
-// ═══════════════════════════════════════
 // SUMMARY
-// ═══════════════════════════════════════
 function renderSummary() {
   const c=getC();
   const attArr=c.students.map(s=>attStats(s).pct).filter(x=>x!==null);
@@ -1361,40 +1466,43 @@ function renderSummary() {
       <td style="font-family:'DM Serif Display',serif;font-size:16px;color:${avgCol}">${avg||'—'}</td>
       <td style="color:var(--accent2)">${totalParticipation(s)}</td>
       <td>${c.tasks.length?`${delivered}/${c.tasks.length}`:'—'}</td>
-      <td><input class="grade-input" type="number" min="0" max="10" step="0.1" value="${fg}" placeholder="—" style="width:60px" onchange="getC().finalGrades[${s.id}]=this.value;save()" oninput="getC().finalGrades[${s.id}]=this.value"></td>
+      <td style="text-align:center">
+        <input class="grade-input" type="text" value="${fg}" placeholder="—" style="width:54px"
+          onchange="getC().finalGrades[${s.id}]=this.value;save()"
+          oninput="getC().finalGrades[${s.id}]=this.value">
+      </td>
     </tr>`;
   }).join('');
 }
 
-// ═══════════════════════════════════════
-// EXPORT
-// ═══════════════════════════════════════
-function exportCSV(){
-  const c=getC();
-  const rows=[['Nombre','Legajo','Email','% Asistencia','P','A','T','AC','F','L','Promedio Notas','Participación','Trabajos','Nota Final']];
-  c.students.forEach(s=>{
-    const st=attStats(s),avg=weightedAvg(s);
-    const del=c.tasks.filter(t=>['si','tarde'].includes(c.taskDelivery[`${s.id}_${t.id}`])).length;
-    rows.push([s.name,s.legajo||'',s.email||'',st.countable>0?st.pct+'%':'',st.P,st.A,st.T,st.AC,st.F,st.L,avg||'',totalParticipation(s),c.tasks.length?`${del}/${c.tasks.length}`:'',c.finalGrades[s.id]||'']);
+// CSV EXPORT
+function exportCSV() {
+  const c = getC();
+  const cols = allGradeCols();
+  const headers = ['Nombre','Legajo','% Asistencia','Estado','Participación',...cols.map(col=>col.name),'Promedio','Nota Final'];
+  const rows = c.students.map(s => {
+    const st = attStats(s);
+    const avg = weightedAvg(s);
+    const badge = st.pct!==null?(st.pct>=75?'Regular':st.pct>=50?'En riesgo':'Irregular'):'';
+    const grades = cols.map(col => gradeVal(c, s.id, col));
+    return [s.name, s.legajo||'', st.countable>0?st.pct+'%':'', badge, totalParticipation(s), ...grades, avg||'', c.finalGrades[s.id]||''];
   });
-  const blob=new Blob([rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n')],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${c.name}_registro.csv`;a.click();
-}
-
-// ═══════════════════════════════════════
-// BACKUP / RESTORE
-// ═══════════════════════════════════════
-function exportBackup() {
-  const data = JSON.stringify({ courses, nextId }, null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
+  const csv = [headers, ...rows].map(r => r.map(x => `"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
-  const now = new Date();
-  const stamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  a.href = URL.createObjectURL(blob);
-  a.download = `registro_clases_${stamp}.json`;
+  a.href = URL.createObjectURL(new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8'}));
+  a.download = `${c.name}_${new Date().toISOString().split('T')[0]}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
-  // show feedback
+}
+
+// BACKUP
+function exportBackup() {
+  const data = JSON.stringify({courses, nextId}, null, 2);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([data], {type:'application/json'}));
+  a.download = `registro_backup_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
   const el = document.getElementById('saveStatus');
   if (el) { el.textContent = '✓ Guardado'; setTimeout(()=>{ el.textContent=''; }, 3000); }
 }
@@ -1417,33 +1525,25 @@ function importBackup(event) {
     } catch(err) {
       alert('Error al leer el archivo. Asegurate de que sea un backup válido.');
     }
-    // reset input so same file can be loaded again
     event.target.value = '';
   };
   reader.readAsText(file);
 }
 
-// ═══════════════════════════════════════
 // INIT
-// ═══════════════════════════════════════
 load();
-if(!courses.length){
-  courses.push({
-    id:uid(),name:'Matemáticas 3°B',school:'Escuela N°12',year:'3°B',cycle:'2025',
-    teacher:'Prof. Ejemplo',day:'Lunes',day2:'Miércoles',turno:'Mañana',
-    startTime:'08:00',endTime:'09:30',room:'Aula 7',
-    firstDate:'2025-03-10',lastDate:'2025-11-28',
-    recessStart:'2025-07-07',recessEnd:'2025-07-18',notes:'',
-    students:[
-      {id:uid(),name:'García, Lucía',legajo:'001',email:'',participation:{}},
-      {id:uid(),name:'López, Martín',legajo:'002',email:'',participation:{}},
-      {id:uid(),name:'Rodríguez, Sol',legajo:'003',email:'',participation:{}},
-    ],
-    dates:[],attendance:{},exams:[],grades:{},tasks:[],taskDelivery:{},finalGrades:{}
-  });
-  save();
-}
-renderCourseGrid();
+document.getElementById('loginScreen').style.display = 'flex';
+document.getElementById('courseScreen').style.display = 'none';
+
+setTimeout(() => {
+  if (document.getElementById('loginScreen').style.display !== 'none') {
+    const allScripts = Array.from(document.querySelectorAll('script')).map(s=>s.textContent).join('');
+    if (allScripts.includes('PEGAR_apiKey')) {
+      document.getElementById('setupBanner').classList.add('show');
+    }
+  }
+}, 3000);
 </script>
+
 </body>
 </html>
